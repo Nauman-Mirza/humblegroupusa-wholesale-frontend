@@ -1,4 +1,4 @@
-const API_BASE = 'https://api.humblegroupusa.com';
+const API_BASE = 'https://api.humblegroupusa.com/api/admin';
 
 const getToken = () => localStorage.getItem('token');
 
