@@ -515,7 +515,9 @@ const ProductsPage: React.FC = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <span className="font-semibold">${product.price.toFixed(2)}</span>
+                    <span className="font-semibold">
+                      ${Number(product.price || 0).toFixed(2)}
+                    </span>
                   </td>
                   <td className="px-6 py-4">
                     {getStockBadge(product.quantity)}
