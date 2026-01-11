@@ -103,3 +103,32 @@ export interface PaginatedResponse<T> {
   per_page: number;
   current_page: number;
 }
+
+export interface Product {
+  _id?: string;
+  id?: string;
+  name: string;
+  description?: string;
+  sub_category_id: string;
+  brand_id?: string;
+  category_id?: string;
+  brand?: {
+    id: string;
+    name: string;
+  };
+  category?: {
+    id: string;
+    name: string;
+  };
+  sub_category?: {
+    id: string;
+    name: string;
+  };
+  price: number;
+  quantity: number;
+  sku: string;
+  images: string[];
+  warehence_product_id?: string;
+  created_at: string;
+  updated_at: string;
+}

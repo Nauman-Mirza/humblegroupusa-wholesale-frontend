@@ -390,5 +390,72 @@ export const api = {
       });
       return handleResponse(response);
     }
+  },
+
+  products: {
+    getAll: async (params: { per_page: number; page: number; brand_id?: string; category_id?: string; sub_category_id?: string; search?: string }) => {
+      const query = new URLSearchParams();
+      query.append('per_page', params.per_page.toString());
+      query.append('page', params.page.toString());
+      if (params.brand_id) query.append('brand_id', params.brand_id);
+      if (params.category_id) query.append('category_id', params.category_id);
+      if (params.sub_category_id) query.append('sub_category_id', params.sub_category_id);
+      if (params.search) query.append('search', params.search);
+
+      const response = await fetch(`${API_BASE}/products?${query}`, {
+        headers: { 
+          'Token': getToken() || '',
+          'Accept': 'application/json'
+        }
+      });
+      
+      const result = await handleResponse(response);
+      const responseData = result.data[0];
+      
+      return {
+        data: responseData.items || [],
+        total: responseData.pagination?.total || 0,
+        per_page: responseData.pagination?.per_page || 10,
+        current_page: responseData.pagination?.current_page || 1
+      };
+    },
+
+    create: async (formData: FormData) => {
+      const response = await fetch(`${API_BASE}/product/create`, {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Token': getToken() || ''
+        },
+        body: formData
+      });
+      return handleResponse(response);
+    },
+
+    update: async (formData: FormData) => {
+      const response = await fetch(`${API_BASE}/product/update`, {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Token': getToken() || ''
+        },
+        body: formData
+      });
+      return handleResponse(response);
+    },
+
+    delete: async (productId: string) => {
+      const response = await fetch(`${API_BASE}/product/delete`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Token': getToken() || ''
+        },
+        body: JSON.stringify({ product_id: productId })
+      });
+      return handleResponse(response);
+    }
   }
 };
+

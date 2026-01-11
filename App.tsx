@@ -5,6 +5,7 @@ import UsersPage from './pages/UsersPage';
 import BrandsPage from './pages/BrandsPage';
 import CategoriesPage from './pages/CategoriesPage';
 import SubCategoriesPage from './pages/SubCategoriesPage';
+import ProductsPage from './pages/ProductsPage';
 import AdminsPage from './pages/AdminsPage';
 import Layout from './components/Layout';
 
@@ -23,6 +24,7 @@ const App: React.FC = () => {
       <Route path="/brands" element={<ProtectedRoute><BrandsPage /></ProtectedRoute>} />
       <Route path="/categories" element={<ProtectedRoute><CategoriesPage /></ProtectedRoute>} />
       <Route path="/sub-categories" element={<ProtectedRoute><SubCategoriesPage /></ProtectedRoute>} />
+      <Route path="/products" element={<ProtectedRoute><ProductsPage /></ProtectedRoute>} />
       <Route path="/admins" element={<ProtectedRoute><AdminsPage /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>

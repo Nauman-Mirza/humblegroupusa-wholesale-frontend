@@ -229,8 +229,12 @@ const openCreateModal = async () => {
 
     // Add images to remove (for update only)
     if (subCatId && removeImages.length > 0) {
-      removeImages.forEach((path) => {
-        formData.append('remove_images[]', path);
+      removeImages.forEach((imgUrl) => {
+        // Extract the path after /storage/
+        const pathMatch = imgUrl.match(/\/storage\/(.+)$/);
+        if (pathMatch) {
+          formData.append('remove_images[]', pathMatch[1]);
+        }
       });
     }
 
