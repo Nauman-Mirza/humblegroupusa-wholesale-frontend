@@ -30,10 +30,11 @@ const LoginPage: React.FC = () => {
     <div className="min-h-screen bg-white flex items-center justify-center p-4">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
-          <div className="inline-block w-16 h-16 bg-black flex items-center justify-center mb-4">
-            <span className="text-white font-black text-2xl">H</span>
-          </div>
-          <h1 className="text-3xl font-bold text-gray-900">Humble Group USA</h1>
+          <img 
+            src="/HGU-logo-1536x743.png" 
+            alt="Humble Group USA" 
+            className="h-16 mx-auto mb-4 object-contain"
+          />
           <p className="text-sm text-gray-600 mt-2">Wholesale Portal Admin</p>
         </div>
 
