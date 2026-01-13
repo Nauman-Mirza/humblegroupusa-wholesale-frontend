@@ -456,6 +456,73 @@ export const api = {
       });
       return handleResponse(response);
     }
+  },
+
+  roles: {
+    getAll: async (params: { per_page: number; page: number; search?: string }) => {
+      const query = new URLSearchParams();
+      query.append('per_page', params.per_page.toString());
+      query.append('page', params.page.toString());
+      if (params.search) query.append('search', params.search);
+
+      const response = await fetch(`${API_BASE}/roles?${query}`, {
+        headers: { 
+          'Token': getToken() || '',
+          'Accept': 'application/json'
+        }
+      });
+      
+      const result = await handleResponse(response);
+      const responseData = result.data[0];
+      
+      return {
+        data: responseData.items || [],
+        total: responseData.pagination?.total || 0,
+        per_page: responseData.pagination?.per_page || 20,
+        current_page: responseData.pagination?.current_page || 1
+      };
+    },
+
+    create: async (data: { name: string; type: string; description?: string }) => {
+      const response = await fetch(`${API_BASE}/roles/create`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Token': getToken() || ''
+        },
+        body: JSON.stringify(data)
+      });
+      return handleResponse(response);
+    },
+
+    update: async (roleId: string, data: { name?: string; type?: string; description?: string }) => {
+      const response = await fetch(`${API_BASE}/roles/update`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Token': getToken() || ''
+        },
+        body: JSON.stringify({ role_id: roleId, ...data })
+      });
+      return handleResponse(response);
+    },
+
+    delete: async (roleId: string) => {
+      const response = await fetch(`${API_BASE}/roles/delete`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Token': getToken() || ''
+        },
+        body: JSON.stringify({ role_id: roleId })
+      });
+      return handleResponse(response);
+    }
   }
+
+
 };
 

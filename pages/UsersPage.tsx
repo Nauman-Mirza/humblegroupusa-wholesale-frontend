@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
-import { User, UserDetail, ShippingAddress } from '../types';
+import { User, UserDetail, ShippingAddress, Role } from '../types';
 import { 
   Table, 
   Button, 
@@ -8,7 +8,8 @@ import {
   Input, 
   Dialog, 
   Switch, 
-  Card 
+  Card,
+  Select
 } from '../components/UIComponents';
 import { Edit2, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 
@@ -23,6 +24,10 @@ const UsersPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loadingDetail, setLoadingDetail] = useState(false);
 
+  // Roles for dropdown
+  const [roles, setRoles] = useState<Role[]>([]);
+  const [selectedRoleId, setSelectedRoleId] = useState<string>('');
+
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -36,19 +41,39 @@ const UsersPage: React.FC = () => {
     }
   };
 
+  const fetchRoles = async () => {
+    try {
+      const res = await api.roles.getAll({ per_page: 100, page: 1 });
+      setRoles(res.data);
+    } catch (err) {
+      console.error('Failed to load roles');
+    }
+  };
+
   useEffect(() => {
     fetchData();
+    fetchRoles();
   }, [page]);
 
   const openEditDialog = async (user: User) => {
     setLoadingDetail(true);
     setIsEditOpen(true);
+    setSelectedRoleId('');
     try {
       const detail = await api.users.getDetail(user._id);
       setCurrentUser({
         ...detail.data.user,
         shipping_address: detail.data.shipping_address
       });
+      
+      // Try to find the role ID based on the role name
+      if (detail.data.user.roles && detail.data.user.roles.length > 0) {
+        const userRoleName = detail.data.user.roles[0]?.toLowerCase();
+        const matchedRole = roles.find(r => r.name.toLowerCase() === userRoleName);
+        if (matchedRole) {
+          setSelectedRoleId(matchedRole._id || matchedRole.id || '');
+        }
+      }
     } catch (err: any) {
       alert(err.message || 'Failed to load user details');
       setIsEditOpen(false);
@@ -70,6 +95,11 @@ const UsersPage: React.FC = () => {
         company_name: currentUser.company_name,
         website: currentUser.website || ''
       };
+
+      // Add role_id if selected
+      if (selectedRoleId) {
+        payload.role_id = selectedRoleId;
+      }
 
       if (currentUser.shipping_address) {
         payload.shipping_address = currentUser.shipping_address;
@@ -122,7 +152,7 @@ const UsersPage: React.FC = () => {
           </div>
         ) : (
           <>
-            <Table headers={['Customer', 'Company', 'Contact', 'Status', 'Actions']}>
+            <Table headers={['Customer', 'Company', 'Contact', 'Role', 'Status', 'Actions']}>
               {data?.data.map((user) => (
                 <tr key={user._id} className="hover:bg-gray-50">
                   <td className="px-6 py-4">
@@ -136,6 +166,19 @@ const UsersPage: React.FC = () => {
                   </td>
                   <td className="px-6 py-4">
                     <span className="text-sm text-gray-600">{user.phone}</span>
+                  </td>
+                  <td className="px-6 py-4">
+                    {user.roles && user.roles.length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {user.roles.map((role, idx) => (
+                          <Badge key={idx} variant="neutral">
+                            <span className="capitalize">{role}</span>
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-sm text-gray-400">No role</span>
+                    )}
                   </td>
                   <td className="px-6 py-4">
                     <Badge variant={user.is_active ? 'success' : 'neutral'}>
@@ -248,6 +291,25 @@ const UsersPage: React.FC = () => {
               value={currentUser.company_name} 
               onChange={(e) => setCurrentUser({...currentUser, company_name: e.target.value})}
             />
+
+            {/* Role Selection */}
+            <Select 
+              label="User Role"
+              value={selectedRoleId}
+              onChange={(e) => setSelectedRoleId(e.target.value)}
+              options={[
+                { label: 'Select a role', value: '' },
+                ...roles.map(r => ({ 
+                  label: r.name.charAt(0).toUpperCase() + r.name.slice(1), 
+                  value: r._id || r.id || '' 
+                }))
+              ]}
+            />
+            {currentUser.roles && currentUser.roles.length > 0 && (
+              <p className="text-xs text-gray-500 -mt-3">
+                Current role: <span className="capitalize font-medium">{currentUser.roles.join(', ')}</span>
+              </p>
+            )}
 
             <div className="bg-gray-50 p-5 border border-gray-200 rounded space-y-4">
               <h3 className="text-sm font-semibold text-gray-900">Shipping Address</h3>

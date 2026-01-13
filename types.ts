@@ -8,6 +8,7 @@ export interface User {
   website?: string;
   company_name: string;
   is_active: boolean;
+  roles?: string[];
   
   agree_min_order: boolean;
   agree_no_personal_use: boolean;
@@ -18,6 +19,11 @@ export interface User {
   
   created_at: string;
   updated_at: string;
+}
+
+export interface UserDetail extends User {
+  shipping_address: ShippingAddress | null;
+  selected_role_id?: string;
 }
 
 export interface ShippingAddress {
@@ -129,6 +135,16 @@ export interface Product {
   sku: string;
   images: string[];
   warehence_product_id?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Role {
+  _id?: string;
+  id?: string;
+  name: string;
+  description?: string;
+  type: 'general' | 'custom';
   created_at: string;
   updated_at: string;
 }
