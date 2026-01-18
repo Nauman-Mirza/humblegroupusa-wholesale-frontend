@@ -134,6 +134,8 @@ export interface Product {
   quantity: number;
   sku: string;
   images: string[];
+  product_visibility?: string[]; // Array of role IDs
+  product_visibility_names?: string[]; // Array of role names (from API)
   warehence_product_id?: string;
   created_at: string;
   updated_at: string;

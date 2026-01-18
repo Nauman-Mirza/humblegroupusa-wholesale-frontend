@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
-import { Product, Brand, Category, SubCategory } from '../types';
+import { Product, Brand, Category, SubCategory, Role } from '../types';
 import { 
   Table, 
   Button, 
@@ -10,7 +10,7 @@ import {
   Card,
   Select 
 } from '../components/UIComponents';
-import { Edit2, Trash2, ChevronLeft, ChevronRight, Package, Upload, X, Image as ImageIcon } from 'lucide-react';
+import { Edit2, Trash2, ChevronLeft, ChevronRight, Package, Upload, Image as ImageIcon, Check } from 'lucide-react';
 
 const ProductsPage: React.FC = () => {
   const [data, setData] = useState<{ data: Product[]; total: number } | null>(null);
@@ -28,6 +28,9 @@ const ProductsPage: React.FC = () => {
   const [filterCategories, setFilterCategories] = useState<Category[]>([]);
   const [filterSubCategories, setFilterSubCategories] = useState<SubCategory[]>([]);
 
+  // Roles for product visibility
+  const [roles, setRoles] = useState<Role[]>([]);
+
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
@@ -41,9 +44,10 @@ const ProductsPage: React.FC = () => {
     price: '',
     quantity: '',
     sku: '',
-    brand_id: '',        // For UI cascading dropdown only
-    category_id: '',     // For UI cascading dropdown only
-    sub_category_id: '', // This is what we send to backend
+    brand_id: '',
+    category_id: '',
+    sub_category_id: '',
+    product_visibility: [] as string[], // Array of role IDs
     images: [] as File[],
     existingImages: [] as string[],
     removeImages: [] as string[]
@@ -54,9 +58,10 @@ const ProductsPage: React.FC = () => {
   const [formCategories, setFormCategories] = useState<Category[]>([]);
   const [formSubCategories, setFormSubCategories] = useState<SubCategory[]>([]);
 
-  // Load brands on mount
+  // Load brands and roles on mount
   useEffect(() => {
     loadBrands();
+    loadRoles();
   }, []);
 
   // Load filter categories when filter brand changes
@@ -109,6 +114,15 @@ const ProductsPage: React.FC = () => {
       setFormBrands(res.data);
     } catch (err: any) {
       console.error('Failed to load brands:', err);
+    }
+  };
+
+  const loadRoles = async () => {
+    try {
+      const res = await api.roles.getAll({ per_page: 100, page: 1 });
+      setRoles(res.data);
+    } catch (err: any) {
+      console.error('Failed to load roles:', err);
     }
   };
 
@@ -180,6 +194,7 @@ const ProductsPage: React.FC = () => {
       brand_id: '',
       category_id: '',
       sub_category_id: '',
+      product_visibility: [],
       images: [],
       existingImages: [],
       removeImages: []
@@ -191,19 +206,26 @@ const ProductsPage: React.FC = () => {
 
   const openCreateDialog = () => {
     resetForm();
+    
+    // Set default role to General Users (type: 'general')
+    const generalUsersRole = roles.find(r => r.type === 'general');
+    if (generalUsersRole) {
+      setFormData(prev => ({
+        ...prev,
+        product_visibility: [generalUsersRole._id || generalUsersRole.id || '']
+      }));
+    }
+    
     setIsModalOpen(true);
   };
 
   const openEditDialog = async (product: Product) => {
     setEditingProduct(product);
     
-    // IMPORTANT: Use the IDs from the product response directly
-    // The API returns brand_id, category_id, sub_category_id at the root level
     const brandId = product.brand_id || '';
     const categoryId = product.category_id || '';
     const subCategoryId = product.sub_category_id || '';
     
-    // Load categories and sub-categories FIRST, before setting form data
     if (brandId) {
       await loadFormCategories(brandId);
     }
@@ -211,7 +233,29 @@ const ProductsPage: React.FC = () => {
       await loadFormSubCategories(categoryId);
     }
 
-    // Set form data AFTER loading dropdowns
+    // Get product_visibility IDs - need to match names to IDs
+    let visibilityIds: string[] = [];
+    if (product.product_visibility && product.product_visibility.length > 0) {
+      // If we have IDs directly
+      visibilityIds = product.product_visibility;
+    } else if (product.product_visibility_names && product.product_visibility_names.length > 0) {
+      // If we only have names, match them to IDs
+      visibilityIds = product.product_visibility_names
+        .map(name => {
+          const role = roles.find(r => r.name.toLowerCase() === name.toLowerCase());
+          return role ? (role._id || role.id || '') : '';
+        })
+        .filter(id => id !== '');
+    }
+
+    // If no visibility is set, default to General Users (type: 'general')
+    if (visibilityIds.length === 0) {
+      const generalUsersRole = roles.find(r => r.type === 'general');
+      if (generalUsersRole) {
+        visibilityIds = [generalUsersRole._id || generalUsersRole.id || ''];
+      }
+    }
+
     setFormData({
       name: product.name,
       description: product.description || '',
@@ -221,6 +265,7 @@ const ProductsPage: React.FC = () => {
       brand_id: brandId,
       category_id: categoryId,
       sub_category_id: subCategoryId,
+      product_visibility: visibilityIds,
       images: [],
       existingImages: product.images || [],
       removeImages: []
@@ -229,13 +274,67 @@ const ProductsPage: React.FC = () => {
     setIsModalOpen(true);
   };
 
+  // Check if General Users role is selected (type: 'general')
+  const isGeneralUsersSelected = () => {
+    const generalUsersRole = roles.find(r => r.type === 'general');
+    if (!generalUsersRole) return false;
+    const generalUsersId = generalUsersRole._id || generalUsersRole.id || '';
+    return formData.product_visibility.includes(generalUsersId);
+  };
+
+  // Get General Users role (type: 'general')
+  const getGeneralUsersRole = () => {
+    return roles.find(r => r.type === 'general');
+  };
+
+  // Get other roles (type: 'custom')
+  const getOtherRoles = () => {
+    return roles.filter(r => r.type === 'custom');
+  };
+
+  const handleGeneralUsersToggle = () => {
+    const generalUsersRole = getGeneralUsersRole();
+    if (!generalUsersRole) return;
+    
+    const generalUsersId = generalUsersRole._id || generalUsersRole.id || '';
+    
+    // Select General Users and clear all other selections
+    setFormData(prev => ({
+      ...prev,
+      product_visibility: [generalUsersId]
+    }));
+  };
+
+  const toggleOtherRole = (roleId: string) => {
+    // Always remove General Users when any checkbox is clicked
+    const generalUsersRole = getGeneralUsersRole();
+    const generalUsersId = generalUsersRole ? (generalUsersRole._id || generalUsersRole.id || '') : '';
+    
+    setFormData(prev => {
+      let newVisibility = [...prev.product_visibility];
+      
+      // Remove General Users if it's selected
+      if (generalUsersId && newVisibility.includes(generalUsersId)) {
+        newVisibility = newVisibility.filter(id => id !== generalUsersId);
+      }
+      
+      // Toggle the clicked role
+      if (newVisibility.includes(roleId)) {
+        newVisibility = newVisibility.filter(id => id !== roleId);
+      } else {
+        newVisibility.push(roleId);
+      }
+      
+      return { ...prev, product_visibility: newVisibility };
+    });
+  };
+
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     
-    // Validate file types and sizes
     const validFiles = files.filter((file: File) => {
       const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-      const maxSize = 5 * 1024 * 1024; // 5MB
+      const maxSize = 5 * 1024 * 1024;
       
       if (!validTypes.includes(file.type)) {
         alert(`${file.name} is not a valid image type. Only JPG, PNG, and WEBP are allowed.`);
@@ -250,7 +349,6 @@ const ProductsPage: React.FC = () => {
       return true;
     });
 
-    // Check total images limit
     const totalImages = formData.existingImages.length - formData.removeImages.length + formData.images.length + validFiles.length;
     
     if (totalImages > 10) {
@@ -285,7 +383,6 @@ const ProductsPage: React.FC = () => {
   };
 
   const handleSaveProduct = async () => {
-    // Validation
     if (!formData.name.trim()) {
       alert('Product name is required');
       return;
@@ -307,7 +404,12 @@ const ProductsPage: React.FC = () => {
       return;
     }
 
-    // Check images requirement for new products
+    // Validate that at least one role is selected
+    if (formData.product_visibility.length === 0) {
+      alert('Please select at least one customer role for product visibility');
+      return;
+    }
+
     if (!editingProduct) {
       const totalImages = formData.images.length;
       if (totalImages === 0) {
@@ -320,12 +422,16 @@ const ProductsPage: React.FC = () => {
     try {
       const formDataToSend = new FormData();
       
-      // Common fields for both create and update
       formDataToSend.append('name', formData.name);
       formDataToSend.append('description', formData.description);
       formDataToSend.append('price', formData.price);
       formDataToSend.append('quantity', formData.quantity);
       formDataToSend.append('sub_category_id', formData.sub_category_id);
+
+      // Add product visibility (role IDs)
+      formData.product_visibility.forEach((roleId) => {
+        formDataToSend.append('product_visibility[]', roleId);
+      });
 
       // Add images
       formData.images.forEach((file) => {
@@ -333,15 +439,9 @@ const ProductsPage: React.FC = () => {
       });
 
       if (editingProduct) {
-        // EDITING: Don't send SKU
         formDataToSend.append('product_id', editingProduct._id || editingProduct.id || '');
         
-        // Add images to remove - convert URLs back to storage paths
-        // Backend stores: "products/filename.jpg"
-        // API returns: "https://api.humblegroupusa.com/storage/products/filename.jpg"
-        // We need to send: "products/filename.jpg"
         formData.removeImages.forEach((imgUrl) => {
-          // Extract the path after /storage/
           const pathMatch = imgUrl.match(/\/storage\/(.+)$/);
           if (pathMatch) {
             formDataToSend.append('remove_images[]', pathMatch[1]);
@@ -350,9 +450,7 @@ const ProductsPage: React.FC = () => {
 
         await api.products.update(formDataToSend);
       } else {
-        // CREATING: Include SKU only for new products
         formDataToSend.append('sku', formData.sku);
-        
         await api.products.create(formDataToSend);
       }
 
@@ -473,7 +571,7 @@ const ProductsPage: React.FC = () => {
           </div>
         ) : (
           <>
-            <Table headers={['Product', 'SKU', 'Category', 'Price', 'Stock', 'Images', 'Actions']}>
+            <Table headers={['Product', 'SKU', 'Category', 'Price', 'Stock', 'Visibility', 'Actions']}>
               {data?.data.map((product) => (
                 <tr key={product._id || product.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4">
@@ -499,7 +597,7 @@ const ProductsPage: React.FC = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <Badge variant="neutral" className="font-mono text-xs">{product.sku}</Badge>
+                    <Badge variant="neutral">{product.sku}</Badge>
                   </td>
                   <td className="px-6 py-4">
                     <div className="text-sm">
@@ -523,9 +621,24 @@ const ProductsPage: React.FC = () => {
                     {getStockBadge(product.quantity)}
                   </td>
                   <td className="px-6 py-4">
-                    <Badge variant="neutral">
-                      <ImageIcon size={12} /> {product.images?.length || 0}
-                    </Badge>
+                    {product.product_visibility_names && product.product_visibility_names.length > 0 ? (
+                      <div className="flex flex-wrap gap-1 max-w-[150px]">
+                        {product.product_visibility_names.slice(0, 2).map((name, idx) => (
+                          <Badge key={idx} variant="neutral">
+                            <span className="capitalize text-xs">{name}</span>
+                          </Badge>
+                        ))}
+                        {product.product_visibility_names.length > 2 && (
+                          <Badge variant="neutral">
+                            <span className="text-xs">+{product.product_visibility_names.length - 2}</span>
+                          </Badge>
+                        )}
+                      </div>
+                    ) : (
+                      <Badge variant="neutral">
+                        <span className="capitalize text-xs">General Users</span>
+                      </Badge>
+                    )}
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex gap-2 justify-end">
@@ -664,7 +777,7 @@ const ProductsPage: React.FC = () => {
             <p className="text-xs text-gray-500 -mt-3">SKU cannot be changed after creation</p>
           )}
 
-          {/* Category Selection - Cascading Dropdowns */}
+          {/* Category Selection */}
           <div className="bg-gray-50 p-4 border border-gray-200 rounded space-y-3">
             <h3 className="text-sm font-semibold text-gray-900">Category Selection</h3>
             
@@ -707,9 +820,6 @@ const ProductsPage: React.FC = () => {
                   </option>
                 ))}
               </select>
-              {formData.brand_id && formCategories.length === 0 && (
-                <p className="text-xs text-yellow-600 mt-1">This brand has no categories</p>
-              )}
             </div>
 
             <div>
@@ -732,8 +842,85 @@ const ProductsPage: React.FC = () => {
                   </option>
                 ))}
               </select>
-              {formData.category_id && formSubCategories.length === 0 && (
-                <p className="text-xs text-yellow-600 mt-1">This category has no sub-categories</p>
+            </div>
+          </div>
+
+          {/* Product Visibility - Radio for General Users, Checkboxes for Others */}
+          <div className="bg-gray-50 p-4 border border-gray-200 rounded space-y-3">
+            <div className="flex justify-between items-center">
+              <h3 className="text-sm font-semibold text-gray-900">Product Visibility <span className="text-red-500">*</span></h3>
+              <span className="text-xs text-gray-500">
+                {formData.product_visibility.length} role(s) selected
+              </span>
+            </div>
+            <p className="text-xs text-gray-500">
+              Select "General Users" for all customers, or choose specific roles for restricted access.
+            </p>
+            
+            <div className="border border-gray-200 rounded bg-white overflow-hidden">
+              {roles.length === 0 ? (
+                <div className="p-3 text-sm text-gray-500 text-center">
+                  No roles available
+                </div>
+              ) : (
+                <>
+                  {/* General Users - Radio Button (type: 'general') */}
+                  {getGeneralUsersRole() && (
+                    <div 
+                      onClick={handleGeneralUsersToggle}
+                      className={`
+                        flex items-center justify-between px-3 py-2.5 cursor-pointer transition-colors border-b-2 border-gray-200
+                        ${isGeneralUsersSelected() ? 'bg-green-50' : 'hover:bg-gray-50'}
+                      `}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium capitalize">{getGeneralUsersRole()?.name}</span>
+                        <Badge variant="success">
+                          <span className="text-[10px]">Visible to All</span>
+                        </Badge>
+                      </div>
+                      <div className={`
+                        w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors
+                        ${isGeneralUsersSelected() ? 'bg-green-600 border-green-600' : 'border-gray-300'}
+                      `}>
+                        {isGeneralUsersSelected() && (
+                          <div className="w-2 h-2 bg-white rounded-full" />
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Other Roles - Checkboxes (type: 'custom') */}
+                  {getOtherRoles().length > 0 && (
+                    <div className="max-h-40 overflow-y-auto">
+                      {getOtherRoles().map((role) => {
+                        const roleId = role._id || role.id || '';
+                        const isSelected = formData.product_visibility.includes(roleId);
+                        
+                        return (
+                          <div 
+                            key={roleId}
+                            onClick={() => toggleOtherRole(roleId)}
+                            className={`
+                              flex items-center justify-between px-3 py-2.5 cursor-pointer transition-colors border-b border-gray-100 last:border-b-0
+                              ${isSelected ? 'bg-black/5' : 'hover:bg-gray-50'}
+                            `}
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm capitalize">{role.name}</span>
+                            </div>
+                            <div className={`
+                              w-5 h-5 rounded border-2 flex items-center justify-center transition-colors
+                              ${isSelected ? 'bg-black border-black' : 'border-gray-300'}
+                            `}>
+                              {isSelected && <Check size={12} className="text-white" />}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>
