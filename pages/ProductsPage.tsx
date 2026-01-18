@@ -274,49 +274,10 @@ const ProductsPage: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  // Check if General Users role is selected (type: 'general')
-  const isGeneralUsersSelected = () => {
-    const generalUsersRole = roles.find(r => r.type === 'general');
-    if (!generalUsersRole) return false;
-    const generalUsersId = generalUsersRole._id || generalUsersRole.id || '';
-    return formData.product_visibility.includes(generalUsersId);
-  };
-
-  // Get General Users role (type: 'general')
-  const getGeneralUsersRole = () => {
-    return roles.find(r => r.type === 'general');
-  };
-
-  // Get other roles (type: 'custom')
-  const getOtherRoles = () => {
-    return roles.filter(r => r.type === 'custom');
-  };
-
-  const handleGeneralUsersToggle = () => {
-    const generalUsersRole = getGeneralUsersRole();
-    if (!generalUsersRole) return;
-    
-    const generalUsersId = generalUsersRole._id || generalUsersRole.id || '';
-    
-    // Select General Users and clear all other selections
-    setFormData(prev => ({
-      ...prev,
-      product_visibility: [generalUsersId]
-    }));
-  };
-
-  const toggleOtherRole = (roleId: string) => {
-    // Always remove General Users when any checkbox is clicked
-    const generalUsersRole = getGeneralUsersRole();
-    const generalUsersId = generalUsersRole ? (generalUsersRole._id || generalUsersRole.id || '') : '';
-    
+  // Toggle any role (General Users or custom roles)
+  const toggleRole = (roleId: string) => {
     setFormData(prev => {
       let newVisibility = [...prev.product_visibility];
-      
-      // Remove General Users if it's selected
-      if (generalUsersId && newVisibility.includes(generalUsersId)) {
-        newVisibility = newVisibility.filter(id => id !== generalUsersId);
-      }
       
       // Toggle the clicked role
       if (newVisibility.includes(roleId)) {
@@ -845,7 +806,7 @@ const ProductsPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Product Visibility - Radio for General Users, Checkboxes for Others */}
+          {/* Product Visibility - All Checkboxes */}
           <div className="bg-gray-50 p-4 border border-gray-200 rounded space-y-3">
             <div className="flex justify-between items-center">
               <h3 className="text-sm font-semibold text-gray-900">Product Visibility <span className="text-red-500">*</span></h3>
@@ -854,7 +815,7 @@ const ProductsPage: React.FC = () => {
               </span>
             </div>
             <p className="text-xs text-gray-500">
-              Select "General Users" for all customers, or choose specific roles for restricted access.
+              Select one or more customer roles who can view this product. You can select multiple roles.
             </p>
             
             <div className="border border-gray-200 rounded bg-white overflow-hidden">
@@ -863,64 +824,39 @@ const ProductsPage: React.FC = () => {
                   No roles available
                 </div>
               ) : (
-                <>
-                  {/* General Users - Radio Button (type: 'general') */}
-                  {getGeneralUsersRole() && (
-                    <div 
-                      onClick={handleGeneralUsersToggle}
-                      className={`
-                        flex items-center justify-between px-3 py-2.5 cursor-pointer transition-colors border-b-2 border-gray-200
-                        ${isGeneralUsersSelected() ? 'bg-green-50' : 'hover:bg-gray-50'}
-                      `}
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium capitalize">{getGeneralUsersRole()?.name}</span>
-                        <Badge variant="success">
-                          <span className="text-[10px]">Visible to All</span>
-                        </Badge>
+                <div className="max-h-60 overflow-y-auto">
+                  {roles.map((role) => {
+                    const roleId = role._id || role.id || '';
+                    const isSelected = formData.product_visibility.includes(roleId);
+                    const isGeneralUsers = role.type === 'general';
+                    
+                    return (
+                      <div 
+                        key={roleId}
+                        onClick={() => toggleRole(roleId)}
+                        className={`
+                          flex items-center justify-between px-3 py-2.5 cursor-pointer transition-colors border-b border-gray-100 last:border-b-0
+                          ${isSelected ? 'bg-black/5' : 'hover:bg-gray-50'}
+                        `}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm capitalize font-medium">{role.name}</span>
+                          {isGeneralUsers && (
+                            <Badge variant="success">
+                              <span className="text-[10px]">All Customers</span>
+                            </Badge>
+                          )}
+                        </div>
+                        <div className={`
+                          w-5 h-5 rounded border-2 flex items-center justify-center transition-colors
+                          ${isSelected ? 'bg-black border-black' : 'border-gray-300'}
+                        `}>
+                          {isSelected && <Check size={12} className="text-white" />}
+                        </div>
                       </div>
-                      <div className={`
-                        w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors
-                        ${isGeneralUsersSelected() ? 'bg-green-600 border-green-600' : 'border-gray-300'}
-                      `}>
-                        {isGeneralUsersSelected() && (
-                          <div className="w-2 h-2 bg-white rounded-full" />
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Other Roles - Checkboxes (type: 'custom') */}
-                  {getOtherRoles().length > 0 && (
-                    <div className="max-h-40 overflow-y-auto">
-                      {getOtherRoles().map((role) => {
-                        const roleId = role._id || role.id || '';
-                        const isSelected = formData.product_visibility.includes(roleId);
-                        
-                        return (
-                          <div 
-                            key={roleId}
-                            onClick={() => toggleOtherRole(roleId)}
-                            className={`
-                              flex items-center justify-between px-3 py-2.5 cursor-pointer transition-colors border-b border-gray-100 last:border-b-0
-                              ${isSelected ? 'bg-black/5' : 'hover:bg-gray-50'}
-                            `}
-                          >
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm capitalize">{role.name}</span>
-                            </div>
-                            <div className={`
-                              w-5 h-5 rounded border-2 flex items-center justify-center transition-colors
-                              ${isSelected ? 'bg-black border-black' : 'border-gray-300'}
-                            `}>
-                              {isSelected && <Check size={12} className="text-white" />}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </>
+                    );
+                  })}
+                </div>
               )}
             </div>
           </div>
