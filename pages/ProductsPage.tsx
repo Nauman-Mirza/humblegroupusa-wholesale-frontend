@@ -225,13 +225,6 @@ const ProductsPage: React.FC = () => {
     const brandId = product.brand_id || '';
     const categoryId = product.category_id || '';
     const subCategoryId = product.sub_category_id || '';
-    
-    if (brandId) {
-      await loadFormCategories(brandId);
-    }
-    if (categoryId) {
-      await loadFormSubCategories(categoryId);
-    }
 
     // Get product_visibility IDs - need to match names to IDs
     let visibilityIds: string[] = [];
@@ -256,6 +249,7 @@ const ProductsPage: React.FC = () => {
       }
     }
 
+    // Set form data and open modal immediately
     setFormData({
       name: product.name,
       description: product.description || '',
@@ -271,7 +265,22 @@ const ProductsPage: React.FC = () => {
       removeImages: []
     });
 
+    // Open modal immediately for better UX
     setIsModalOpen(true);
+
+    // Load categories and subcategories in parallel (non-blocking)
+    const promises = [];
+    if (brandId) {
+      promises.push(loadFormCategories(brandId));
+    }
+    if (categoryId) {
+      promises.push(loadFormSubCategories(categoryId));
+    }
+    
+    // Load data in background after modal is open
+    if (promises.length > 0) {
+      await Promise.all(promises);
+    }
   };
 
   // Toggle any role (General Users or custom roles)
