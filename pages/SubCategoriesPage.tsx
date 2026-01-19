@@ -8,7 +8,7 @@ const SubCategoriesPage: React.FC = () => {
   const [data, setData] = useState<{ data: SubCategory[]; total: number } | null>(null);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [modalCategories, setModalCategories] = useState<Category[]>([]); // Separate state for modal
+  const [modalCategories, setModalCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
@@ -22,8 +22,6 @@ const SubCategoriesPage: React.FC = () => {
     description: '', 
     brand_id: '',
     category_id: '',
-    price_type: 'single',
-    price: { amount: 0 },
     images: []
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -117,161 +115,128 @@ const SubCategoriesPage: React.FC = () => {
     }
   };
 
-const openCreateModal = async () => {
-  const initialBrand = brands[0]?.id || brands[0]?._id || '';
-  
-  setCurrentSubCategory({ 
-    name: '', 
-    description: '', 
-    brand_id: initialBrand,
-    category_id: '',
-    price_type: 'single',
-    price: { amount: 0 },
-    images: []
-  });
-  
-  setImageFiles([]);
-  setRemoveImages([]);
-  
-  if (initialBrand) {
-    await fetchModalCategories(initialBrand);
-  }
-  
-  setIsModalOpen(true);
-};
-
-  const openEditModal = async (subCat: SubCategory) => {
-  // Get the brand_id and category_id from nested objects
-  const brandId = subCat.brand?.id || '';
-  const categoryId = subCat.category?.id || '';
-  
-  // First, load the categories for this brand
-  if (brandId) {
-    await fetchModalCategories(brandId);
-  }
-  
-  // Set the current sub-category with proper IDs extracted from nested objects
-  setCurrentSubCategory({
-    id: subCat.id,
-    name: subCat.name,
-    description: subCat.description,
-    brand_id: brandId,
-    category_id: categoryId,
-    price_type: subCat.price_type,
-    price: subCat.price,
-    images: subCat.images
-  });
-  
-  setImageFiles([]);
-  setRemoveImages([]);
-  setIsModalOpen(true);
-};
-
-  const handleSave = async () => {
-  if (!currentSubCategory.name?.trim()) {
-    alert('Sub-category name is required');
-    return;
-  }
-  if (!currentSubCategory.brand_id) {
-    alert('Please select a brand');
-    return;
-  }
-  if (!currentSubCategory.category_id) {
-    alert('Please select a category');
-    return;
-  }
-
-  // Validate price
-  if (currentSubCategory.price_type === 'single') {
-    if (!currentSubCategory.price?.amount || currentSubCategory.price.amount <= 0) {
-      alert('Please enter a valid price amount');
-      return;
-    }
-  } else {
-    if (!currentSubCategory.price?.min || !currentSubCategory.price?.max) {
-      alert('Please enter valid min and max prices');
-      return;
-    }
-    if (currentSubCategory.price.max < currentSubCategory.price.min) {
-      alert('Max price must be greater than min price');
-      return;
-    }
-  }
-  
-  setIsSubmitting(true);
-  try {
-    const formData = new FormData();
+  const openCreateModal = async () => {
+    const initialBrand = brands[0]?.id || brands[0]?._id || '';
     
-    const subCatId = currentSubCategory.id || currentSubCategory._id;
-    if (subCatId) {
-      formData.append('sub_category_id', subCatId);
-    }
-    
-    formData.append('name', currentSubCategory.name);
-    if (currentSubCategory.description) {
-      formData.append('description', currentSubCategory.description);
-    }
-    formData.append('brand_id', currentSubCategory.brand_id);
-    formData.append('category_id', currentSubCategory.category_id);
-    formData.append('price_type', currentSubCategory.price_type || 'single');
-
-    if (currentSubCategory.price_type === 'single') {
-      formData.append('price[amount]', currentSubCategory.price?.amount?.toString() || '0');
-    } else {
-      formData.append('price[min]', currentSubCategory.price?.min?.toString() || '0');
-      formData.append('price[max]', currentSubCategory.price?.max?.toString() || '0');
-    }
-
-    // Add new images
-    imageFiles.forEach((file) => {
-      formData.append('images[]', file);
+    setCurrentSubCategory({ 
+      name: '', 
+      description: '', 
+      brand_id: initialBrand,
+      category_id: '',
+      images: []
     });
-
-    // Add images to remove (for update only)
-    if (subCatId && removeImages.length > 0) {
-      removeImages.forEach((imgUrl) => {
-        // Extract the path after /storage/
-        const pathMatch = imgUrl.match(/\/storage\/(.+)$/);
-        if (pathMatch) {
-          formData.append('remove_images[]', pathMatch[1]);
-        }
-      });
-    }
-
-    if (subCatId) {
-      await api.subCategories.update(formData);
-    } else {
-      await api.subCategories.create(formData);
-    }
     
-    setIsModalOpen(false);
     setImageFiles([]);
     setRemoveImages([]);
-    setModalCategories([]);
-    setPage(1);
-    fetchData();
-  } catch (err: any) {
-    alert(err.message || 'Operation failed');
-  } finally {
-    setIsSubmitting(false);
-  }
-};
+    
+    if (initialBrand) {
+      await fetchModalCategories(initialBrand);
+    }
+    
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = async (subCat: SubCategory) => {
+    const brandId = subCat.brand?.id || '';
+    const categoryId = subCat.category?.id || '';
+    
+    if (brandId) {
+      await fetchModalCategories(brandId);
+    }
+    
+    setCurrentSubCategory({
+      id: subCat.id,
+      name: subCat.name,
+      description: subCat.description,
+      brand_id: brandId,
+      category_id: categoryId,
+      images: subCat.images
+    });
+    
+    setImageFiles([]);
+    setRemoveImages([]);
+    setIsModalOpen(true);
+  };
+
+  const handleSave = async () => {
+    if (!currentSubCategory.name?.trim()) {
+      alert('Sub-category name is required');
+      return;
+    }
+    if (!currentSubCategory.brand_id) {
+      alert('Please select a brand');
+      return;
+    }
+    if (!currentSubCategory.category_id) {
+      alert('Please select a category');
+      return;
+    }
+    
+    setIsSubmitting(true);
+    try {
+      const formData = new FormData();
+      
+      const subCatId = currentSubCategory.id || currentSubCategory._id;
+      if (subCatId) {
+        formData.append('sub_category_id', subCatId);
+      }
+      
+      formData.append('name', currentSubCategory.name);
+      if (currentSubCategory.description) {
+        formData.append('description', currentSubCategory.description);
+      }
+      formData.append('brand_id', currentSubCategory.brand_id);
+      formData.append('category_id', currentSubCategory.category_id);
+
+      // Add new images
+      imageFiles.forEach((file) => {
+        formData.append('images[]', file);
+      });
+
+      // Add images to remove (for update only)
+      if (subCatId && removeImages.length > 0) {
+        removeImages.forEach((imgUrl) => {
+          const pathMatch = imgUrl.match(/\/storage\/(.+)$/);
+          if (pathMatch) {
+            formData.append('remove_images[]', pathMatch[1]);
+          }
+        });
+      }
+
+      if (subCatId) {
+        await api.subCategories.update(formData);
+      } else {
+        await api.subCategories.create(formData);
+      }
+      
+      setIsModalOpen(false);
+      setImageFiles([]);
+      setRemoveImages([]);
+      setModalCategories([]);
+      setPage(1);
+      fetchData();
+    } catch (err: any) {
+      alert(err.message || 'Operation failed');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const handleDelete = async () => {
-  const subCatId = currentSubCategory.id || currentSubCategory._id;
-  if (!subCatId) return;
-  
-  setIsSubmitting(true);
-  try {
-    await api.subCategories.delete(subCatId);
-    setIsDeleteOpen(false);
-    fetchData();
-  } catch (err: any) {
-    alert(err.message || 'Delete failed');
-  } finally {
-    setIsSubmitting(false);
-  }
-};
+    const subCatId = currentSubCategory.id || currentSubCategory._id;
+    if (!subCatId) return;
+    
+    setIsSubmitting(true);
+    try {
+      await api.subCategories.delete(subCatId);
+      setIsDeleteOpen(false);
+      fetchData();
+    } catch (err: any) {
+      alert(err.message || 'Delete failed');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -305,7 +270,7 @@ const openCreateModal = async () => {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold">Sub-Categories</h1>
-          <p className="text-sm text-gray-600 mt-1">Manage product sub-categories with pricing and images</p>
+          <p className="text-sm text-gray-600 mt-1">Manage product sub-categories with images</p>
         </div>
         <Button 
           variant="primary" 
@@ -341,7 +306,7 @@ const openCreateModal = async () => {
               options={[
                 { label: 'All Brands', value: '' }, 
                 ...brands.map(b => ({ label: b.name, value: b.id || b._id || '' }))
-                ]}
+              ]}
               className="h-10 min-w-[150px]"
             />
             <Select 
@@ -350,7 +315,7 @@ const openCreateModal = async () => {
               options={[
                 { label: 'All Categories', value: '' }, 
                 ...categories.map(c => ({ label: c.name, value: c.id || c._id || '' }))
-                ]}
+              ]}
               className="h-10 min-w-[150px]"
               disabled={!selectedBrand}
             />
@@ -364,7 +329,7 @@ const openCreateModal = async () => {
           </div>
         ) : (
           <>
-            <Table headers={['Sub-Category', 'Brand', 'Category', 'Price', 'Images', 'Actions']}>
+            <Table headers={['Sub-Category', 'Brand', 'Category', 'Images', 'Actions']}>
               {data?.data.map((subCat) => (
                 <tr key={subCat.id || subCat._id} className="hover:bg-gray-50">
                   <td className="px-6 py-4">
@@ -382,15 +347,6 @@ const openCreateModal = async () => {
                   </td>
                   <td className="px-6 py-4">
                     <span className="text-sm text-gray-600">{subCat.category?.name || 'N/A'}</span>
-                  </td>
-                  <td className="px-6 py-4">
-                    {subCat.price_type === 'single' ? (
-                      <span className="font-semibold text-gray-900">${subCat.price.amount?.toFixed(2)}</span>
-                    ) : (
-                      <span className="text-sm text-gray-600">
-                        ${subCat.price.min?.toFixed(2)} - ${subCat.price.max?.toFixed(2)}
-                      </span>
-                    )}
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-1">
@@ -453,273 +409,189 @@ const openCreateModal = async () => {
       </Card>
 
       {/* Create/Edit Modal */}
-    <Dialog 
-    isOpen={isModalOpen} 
-    onClose={() => {
-        setIsModalOpen(false);
-        setModalCategories([]);
-    }} 
-    title={currentSubCategory.id || currentSubCategory._id ? "Edit Sub-Category" : "Create Sub-Category"}
-    footer={(
-        <>
-        <Button variant="outline" onClick={() => {
-            setIsModalOpen(false);
-            setModalCategories([]);
-        }}>Cancel</Button>
-        <Button variant="primary" loading={isSubmitting} onClick={handleSave}>
-            {currentSubCategory.id || currentSubCategory._id ? 'Save Changes' : 'Create Sub-Category'}
-        </Button>
-        </>
-    )}
-    >
-    <div className="space-y-5">
-        <Input 
-        label="Sub-Category Name" 
-        placeholder="e.g., Running Shoes, T-Shirts"
-        value={currentSubCategory.name || ''} 
-        onChange={(e) => setCurrentSubCategory({...currentSubCategory, name: e.target.value})}
-        required
-        />
-        
-        <div className="grid grid-cols-2 gap-4">
-  <div className="flex flex-col gap-2">
-    <label className="text-sm font-medium text-gray-700">Brand</label>
-    <select 
-      value={currentSubCategory.brand_id || ''}
-      onChange={(e) => handleBrandChange(e.target.value)}
-      className="border border-border rounded px-3 py-2 text-sm bg-white outline-none transition-all cursor-pointer"
-    >
-      <option value="">Select a brand</option>
-      {brands.map(b => (
-        <option key={b.id || b._id} value={b.id || b._id}>{b.name}</option>
-        ))}
-    </select>
-  </div>
-
-  <div className="flex flex-col gap-2">
-    <label className="text-sm font-medium text-gray-700">Category</label>
-    <select 
-      value={currentSubCategory.category_id || ''}
-      onChange={(e) => setCurrentSubCategory({...currentSubCategory, category_id: e.target.value})}
-      disabled={!currentSubCategory.brand_id || modalCategories.length === 0}
-      className={`border border-border rounded px-3 py-2 text-sm bg-white outline-none transition-all ${
-        !currentSubCategory.brand_id || modalCategories.length === 0 
-          ? 'cursor-not-allowed bg-gray-100 text-gray-400' 
-          : 'cursor-pointer'
-      }`}
-    >
-      <option value="">
-        {!currentSubCategory.brand_id 
-          ? 'Select brand first' 
-          : modalCategories.length === 0 
-            ? 'No categories available' 
-            : 'Select a category'
-        }
-      </option>
-      {modalCategories.map(c => (
-        <option key={c.id || c._id} value={c.id || c._id}>{c.name}</option>
-        ))}
-    </select>
-    {!currentSubCategory.brand_id && (
-      <p className="text-xs text-gray-500">Please select a brand first</p>
-    )}
-    {currentSubCategory.brand_id && modalCategories.length === 0 && (
-      <p className="text-xs text-yellow-600">This brand has no categories. Please create one first.</p>
-    )}
-  </div>
-</div>
-        
-        <div className="flex flex-col gap-2">
-        <label className="text-sm font-medium text-gray-700">
-            Description <span className="text-gray-400">(Optional)</span>
-        </label>
-        <textarea 
-            className="border border-border rounded px-3 py-2 text-sm bg-white min-h-[80px] focus:outline-none focus:ring-2 focus:ring-black/10"
-            placeholder="Brief description..."
-            value={currentSubCategory.description || ''}
-            onChange={(e) => setCurrentSubCategory({...currentSubCategory, description: e.target.value})}
-        />
-        </div>
-
-        {/* Price Type */}
-        <div className="space-y-3">
-        <label className="text-sm font-medium text-gray-700">Price Type</label>
-        <div className="flex gap-4">
-            <label className="flex items-center gap-2 cursor-pointer">
-            <input 
-                type="radio" 
-                name="price_type" 
-                value="single"
-                checked={currentSubCategory.price_type === 'single'}
-                onChange={() => setCurrentSubCategory({
-                ...currentSubCategory, 
-                price_type: 'single',
-                price: { amount: currentSubCategory.price?.amount || 0 }
-                })}
-                className="w-4 h-4"
-            />
-            <span className="text-sm">Single Price</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-            <input 
-                type="radio" 
-                name="price_type" 
-                value="range"
-                checked={currentSubCategory.price_type === 'range'}
-                onChange={() => setCurrentSubCategory({
-                ...currentSubCategory, 
-                price_type: 'range',
-                price: { 
-                    min: currentSubCategory.price?.min || 0, 
-                    max: currentSubCategory.price?.max || 0 
-                }
-                })}
-                className="w-4 h-4"
-            />
-            <span className="text-sm">Price Range</span>
-            </label>
-        </div>
-        </div>
-
-        {/* Price Inputs */}
-        {currentSubCategory.price_type === 'single' ? (
-        <Input 
-            label="Price ($)" 
-            type="number"
-            step="0.01"
-            min="0"
-            placeholder="0.00"
-            value={currentSubCategory.price?.amount || ''} 
-            onChange={(e) => setCurrentSubCategory({
-            ...currentSubCategory, 
-            price: { amount: parseFloat(e.target.value) || 0 }
-            })}
-        />
-        ) : (
-        <div className="grid grid-cols-2 gap-4">
-            <Input 
-            label="Min Price ($)" 
-            type="number"
-            step="0.01"
-            min="0"
-            placeholder="0.00"
-            value={currentSubCategory.price?.min || ''} 
-            onChange={(e) => setCurrentSubCategory({
-                ...currentSubCategory, 
-                price: { ...currentSubCategory.price, min: parseFloat(e.target.value) || 0 }
-            })}
-            />
-            <Input 
-            label="Max Price ($)" 
-            type="number"
-            step="0.01"
-            min="0"
-            placeholder="0.00"
-            value={currentSubCategory.price?.max || ''} 
-            onChange={(e) => setCurrentSubCategory({
-                ...currentSubCategory, 
-                price: { ...currentSubCategory.price, max: parseFloat(e.target.value) || 0 }
-            })}
-            />
-        </div>
+      <Dialog 
+        isOpen={isModalOpen} 
+        onClose={() => {
+          setIsModalOpen(false);
+          setModalCategories([]);
+        }} 
+        title={currentSubCategory.id || currentSubCategory._id ? "Edit Sub-Category" : "Create Sub-Category"}
+        footer={(
+          <>
+            <Button variant="outline" onClick={() => {
+              setIsModalOpen(false);
+              setModalCategories([]);
+            }}>Cancel</Button>
+            <Button variant="primary" loading={isSubmitting} onClick={handleSave}>
+              {currentSubCategory.id || currentSubCategory._id ? 'Save Changes' : 'Create Sub-Category'}
+            </Button>
+          </>
         )}
-
-        {/* Images */}
-<div className="space-y-3">
-  <label className="text-sm font-medium text-gray-700">
-    Images <span className="text-gray-400">(Max 5)</span>
-  </label>
-  
-  {/* Existing Images */}
-  {currentSubCategory.images && currentSubCategory.images.length > 0 && (
-    <div>
-      <p className="text-xs text-gray-600 mb-2">Current Images</p>
-      <div className="grid grid-cols-5 gap-2">
-        {currentSubCategory.images.map((img, idx) => {
-          const isMarked = removeImages.includes(img);
-          return (
-            <div key={idx} className="relative group">
-              <img 
-                src={img} 
-                alt={`Image ${idx + 1}`}
-                className={`w-full h-20 object-cover rounded border ${isMarked ? 'opacity-50 border-red-500' : 'border-gray-200'}`}
-                onError={(e) => {
-                  console.error('Image failed to load:', img);
-                  e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect width="100" height="100" fill="%23ddd"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" font-family="monospace" font-size="12" fill="%23999"%3ENo Image%3C/text%3E%3C/svg%3E';
-                }}
-              />
-              <button
-                type="button"
-                onClick={() => isMarked ? unmarkImageForRemoval(img) : markImageForRemoval(img)}
-                className={`absolute top-1 right-1 w-6 h-6 rounded-full flex items-center justify-center text-white text-sm font-bold ${isMarked ? 'bg-green-500 hover:bg-green-600' : 'bg-red-500 hover:bg-red-600'}`}
-                title={isMarked ? 'Click to keep this image' : 'Click to remove this image'}
+      >
+        <div className="space-y-5">
+          <Input 
+            label="Sub-Category Name" 
+            placeholder="e.g., Running Shoes, T-Shirts"
+            value={currentSubCategory.name || ''} 
+            onChange={(e) => setCurrentSubCategory({...currentSubCategory, name: e.target.value})}
+            required
+          />
+          
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-medium text-gray-700">Brand</label>
+              <select 
+                value={currentSubCategory.brand_id || ''}
+                onChange={(e) => handleBrandChange(e.target.value)}
+                className="border border-border rounded px-3 py-2 text-sm bg-white outline-none transition-all cursor-pointer"
               >
-                {isMarked ? '↺' : '×'}
-              </button>
+                <option value="">Select a brand</option>
+                {brands.map(b => (
+                  <option key={b.id || b._id} value={b.id || b._id}>{b.name}</option>
+                ))}
+              </select>
             </div>
-          );
-        })}
-      </div>
-      {removeImages.length > 0 && (
-        <p className="text-xs text-red-600 mt-2">
-          {removeImages.length} image(s) marked for removal
-        </p>
-      )}
-    </div>
-  )}
 
-  {/* New Images Preview */}
-  {imageFiles.length > 0 && (
-    <div>
-      <p className="text-xs text-gray-600 mb-2">New Images to Upload</p>
-      <div className="grid grid-cols-5 gap-2">
-        {imageFiles.map((file, idx) => (
-          <div key={idx} className="relative group">
-            <img 
-              src={URL.createObjectURL(file)} 
-              alt={`New ${idx + 1}`}
-              className="w-full h-20 object-cover rounded border border-green-200"
-            />
-            <button
-              type="button"
-              onClick={() => removeNewImage(idx)}
-              className="absolute top-1 right-1 w-6 h-6 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center text-white text-sm font-bold"
-            >
-              ×
-            </button>
-            <div className="absolute bottom-1 left-1 bg-green-500 text-white text-[10px] px-1 rounded">
-              NEW
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-medium text-gray-700">Category</label>
+              <select 
+                value={currentSubCategory.category_id || ''}
+                onChange={(e) => setCurrentSubCategory({...currentSubCategory, category_id: e.target.value})}
+                disabled={!currentSubCategory.brand_id || modalCategories.length === 0}
+                className={`border border-border rounded px-3 py-2 text-sm bg-white outline-none transition-all ${
+                  !currentSubCategory.brand_id || modalCategories.length === 0 
+                    ? 'cursor-not-allowed bg-gray-100 text-gray-400' 
+                    : 'cursor-pointer'
+                }`}
+              >
+                <option value="">
+                  {!currentSubCategory.brand_id 
+                    ? 'Select brand first' 
+                    : modalCategories.length === 0 
+                      ? 'No categories available' 
+                      : 'Select a category'
+                  }
+                </option>
+                {modalCategories.map(c => (
+                  <option key={c.id || c._id} value={c.id || c._id}>{c.name}</option>
+                ))}
+              </select>
+              {!currentSubCategory.brand_id && (
+                <p className="text-xs text-gray-500">Please select a brand first</p>
+              )}
+              {currentSubCategory.brand_id && modalCategories.length === 0 && (
+                <p className="text-xs text-yellow-600">This brand has no categories. Please create one first.</p>
+              )}
             </div>
           </div>
-        ))}
-      </div>
-    </div>
-  )}
+          
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium text-gray-700">
+              Description <span className="text-gray-400">(Optional)</span>
+            </label>
+            <textarea 
+              className="border border-border rounded px-3 py-2 text-sm bg-white min-h-[80px] focus:outline-none focus:ring-2 focus:ring-black/10"
+              placeholder="Brief description..."
+              value={currentSubCategory.description || ''}
+              onChange={(e) => setCurrentSubCategory({...currentSubCategory, description: e.target.value})}
+            />
+          </div>
 
-  {/* Upload Button */}
-  <div>
-    <input 
-      type="file"
-      id="image-upload"
-      multiple
-      accept="image/jpeg,image/jpg,image/png,image/webp"
-      onChange={handleImageChange}
-      className="hidden"
-    />
-    <label 
-      htmlFor="image-upload"
-      className="inline-flex items-center gap-2 px-4 py-2 border border-border rounded text-sm cursor-pointer hover:bg-gray-50 transition-colors"
-    >
-      <ImageIcon size={16} />
-      Add More Images
-    </label>
-    <p className="text-xs text-gray-500 mt-2">
-      Accepts JPG, PNG, WEBP (max 2MB each, 5 images total)
-    </p>
-  </div>
-</div>
-    </div>
-    </Dialog>
+          {/* Images */}
+          <div className="space-y-3">
+            <label className="text-sm font-medium text-gray-700">
+              Images <span className="text-gray-400">(Max 5)</span>
+            </label>
+            
+            {/* Existing Images */}
+            {currentSubCategory.images && currentSubCategory.images.length > 0 && (
+              <div>
+                <p className="text-xs text-gray-600 mb-2">Current Images</p>
+                <div className="grid grid-cols-5 gap-2">
+                  {currentSubCategory.images.map((img, idx) => {
+                    const isMarked = removeImages.includes(img);
+                    return (
+                      <div key={idx} className="relative group">
+                        <img 
+                          src={img} 
+                          alt={`Image ${idx + 1}`}
+                          className={`w-full h-20 object-cover rounded border ${isMarked ? 'opacity-50 border-red-500' : 'border-gray-200'}`}
+                          onError={(e) => {
+                            e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect width="100" height="100" fill="%23ddd"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" font-family="monospace" font-size="12" fill="%23999"%3ENo Image%3C/text%3E%3C/svg%3E';
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => isMarked ? unmarkImageForRemoval(img) : markImageForRemoval(img)}
+                          className={`absolute top-1 right-1 w-6 h-6 rounded-full flex items-center justify-center text-white text-sm font-bold ${isMarked ? 'bg-green-500 hover:bg-green-600' : 'bg-red-500 hover:bg-red-600'}`}
+                          title={isMarked ? 'Click to keep this image' : 'Click to remove this image'}
+                        >
+                          {isMarked ? '↺' : '×'}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+                {removeImages.length > 0 && (
+                  <p className="text-xs text-red-600 mt-2">
+                    {removeImages.length} image(s) marked for removal
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* New Images Preview */}
+            {imageFiles.length > 0 && (
+              <div>
+                <p className="text-xs text-gray-600 mb-2">New Images to Upload</p>
+                <div className="grid grid-cols-5 gap-2">
+                  {imageFiles.map((file, idx) => (
+                    <div key={idx} className="relative group">
+                      <img 
+                        src={URL.createObjectURL(file)} 
+                        alt={`New ${idx + 1}`}
+                        className="w-full h-20 object-cover rounded border border-green-200"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeNewImage(idx)}
+                        className="absolute top-1 right-1 w-6 h-6 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center text-white text-sm font-bold"
+                      >
+                        ×
+                      </button>
+                      <div className="absolute bottom-1 left-1 bg-green-500 text-white text-[10px] px-1 rounded">
+                        NEW
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Upload Button */}
+            <div>
+              <input 
+                type="file"
+                id="image-upload"
+                multiple
+                accept="image/jpeg,image/jpg,image/png,image/webp"
+                onChange={handleImageChange}
+                className="hidden"
+              />
+              <label 
+                htmlFor="image-upload"
+                className="inline-flex items-center gap-2 px-4 py-2 border border-border rounded text-sm cursor-pointer hover:bg-gray-50 transition-colors"
+              >
+                <ImageIcon size={16} />
+                Add More Images
+              </label>
+              <p className="text-xs text-gray-500 mt-2">
+                Accepts JPG, PNG, WEBP (max 2MB each, 5 images total)
+              </p>
+            </div>
+          </div>
+        </div>
+      </Dialog>
 
       {/* Delete Confirmation */}
       <Dialog 

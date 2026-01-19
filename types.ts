@@ -34,10 +34,6 @@ export interface ShippingAddress {
   postcode?: string;
 }
 
-export interface UserDetail extends User {
-  shipping_address: ShippingAddress | null;
-}
-
 export interface Brand {
   _id?: string;
   id?: string;
@@ -73,13 +69,7 @@ export interface SubCategory {
     id: string;
     name: string;
   };
-  price_type: 'single' | 'range';
-  price: {
-    amount?: number;
-    min?: number;
-    max?: number;
-  };
-  images: string[];
+  images: string[]; // Max 5 images, no pricing
   created_at: string;
   updated_at: string;
 }
@@ -110,6 +100,12 @@ export interface PaginatedResponse<T> {
   current_page: number;
 }
 
+export interface RolePrice {
+  role_id: string;
+  role_name?: string; // Populated from API
+  price: number;
+}
+
 export interface Product {
   _id?: string;
   id?: string;
@@ -130,10 +126,11 @@ export interface Product {
     id: string;
     name: string;
   };
-  price: number;
+  price: number; // Default price
+  role_prices?: RolePrice[]; // Role-specific pricing
   quantity: number;
   sku: string;
-  images: string[];
+  images: string[]; // Max 10 images
   product_visibility?: string[]; // Array of role IDs
   product_visibility_names?: string[]; // Array of role names (from API)
   warehence_product_id?: string;

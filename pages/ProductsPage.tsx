@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
-import { Product, Brand, Category, SubCategory, Role } from '../types';
+import { Product, Brand, Category, SubCategory, Role, RolePrice } from '../types';
 import { 
   Table, 
   Button, 
@@ -10,7 +10,7 @@ import {
   Card,
   Select 
 } from '../components/UIComponents';
-import { Edit2, Trash2, ChevronLeft, ChevronRight, Package, Upload, Image as ImageIcon, Check } from 'lucide-react';
+import { Edit2, Trash2, ChevronLeft, ChevronRight, Package, Upload, Image as ImageIcon, Check, DollarSign, X } from 'lucide-react';
 
 const ProductsPage: React.FC = () => {
   const [data, setData] = useState<{ data: Product[]; total: number } | null>(null);
@@ -28,7 +28,7 @@ const ProductsPage: React.FC = () => {
   const [filterCategories, setFilterCategories] = useState<Category[]>([]);
   const [filterSubCategories, setFilterSubCategories] = useState<SubCategory[]>([]);
 
-  // Roles for product visibility
+  // Roles for product visibility and pricing
   const [roles, setRoles] = useState<Role[]>([]);
 
   // Modal states
@@ -48,6 +48,7 @@ const ProductsPage: React.FC = () => {
     category_id: '',
     sub_category_id: '',
     product_visibility: [] as string[], // Array of role IDs
+    role_prices: [] as RolePrice[], // Array of role-specific prices
     images: [] as File[],
     existingImages: [] as string[],
     removeImages: [] as string[]
@@ -195,6 +196,7 @@ const ProductsPage: React.FC = () => {
       category_id: '',
       sub_category_id: '',
       product_visibility: [],
+      role_prices: [],
       images: [],
       existingImages: [],
       removeImages: []
@@ -226,13 +228,11 @@ const ProductsPage: React.FC = () => {
     const categoryId = product.category_id || '';
     const subCategoryId = product.sub_category_id || '';
 
-    // Get product_visibility IDs - need to match names to IDs
+    // Get product_visibility IDs
     let visibilityIds: string[] = [];
     if (product.product_visibility && product.product_visibility.length > 0) {
-      // If we have IDs directly
       visibilityIds = product.product_visibility;
     } else if (product.product_visibility_names && product.product_visibility_names.length > 0) {
-      // If we only have names, match them to IDs
       visibilityIds = product.product_visibility_names
         .map(name => {
           const role = roles.find(r => r.name.toLowerCase() === name.toLowerCase());
@@ -241,7 +241,7 @@ const ProductsPage: React.FC = () => {
         .filter(id => id !== '');
     }
 
-    // If no visibility is set, default to General Users (type: 'general')
+    // If no visibility is set, default to General Users
     if (visibilityIds.length === 0) {
       const generalUsersRole = roles.find(r => r.type === 'general');
       if (generalUsersRole) {
@@ -249,7 +249,9 @@ const ProductsPage: React.FC = () => {
       }
     }
 
-    // Set form data and open modal immediately
+    // Get role prices
+    const rolePrices: RolePrice[] = product.role_prices || [];
+
     setFormData({
       name: product.name,
       description: product.description || '',
@@ -260,15 +262,15 @@ const ProductsPage: React.FC = () => {
       category_id: categoryId,
       sub_category_id: subCategoryId,
       product_visibility: visibilityIds,
+      role_prices: rolePrices.map(rp => ({ ...rp })), // Deep copy
       images: [],
       existingImages: product.images || [],
       removeImages: []
     });
 
-    // Open modal immediately for better UX
     setIsModalOpen(true);
 
-    // Load categories and subcategories in parallel (non-blocking)
+    // Load categories and subcategories in background
     const promises = [];
     if (brandId) {
       promises.push(loadFormCategories(brandId));
@@ -277,18 +279,15 @@ const ProductsPage: React.FC = () => {
       promises.push(loadFormSubCategories(categoryId));
     }
     
-    // Load data in background after modal is open
     if (promises.length > 0) {
       await Promise.all(promises);
     }
   };
 
-  // Toggle any role (General Users or custom roles)
   const toggleRole = (roleId: string) => {
     setFormData(prev => {
       let newVisibility = [...prev.product_visibility];
       
-      // Toggle the clicked role
       if (newVisibility.includes(roleId)) {
         newVisibility = newVisibility.filter(id => id !== roleId);
       } else {
@@ -297,6 +296,35 @@ const ProductsPage: React.FC = () => {
       
       return { ...prev, product_visibility: newVisibility };
     });
+  };
+
+  const updateRolePrice = (roleId: string, price: string) => {
+    setFormData(prev => {
+      const rolePrices = [...prev.role_prices];
+      const existingIndex = rolePrices.findIndex(rp => rp.role_id === roleId);
+      
+      const priceValue = parseFloat(price) || 0;
+      
+      if (existingIndex >= 0) {
+        if (priceValue > 0) {
+          rolePrices[existingIndex] = { role_id: roleId, price: priceValue };
+        } else {
+          // Remove if price is 0 or invalid
+          rolePrices.splice(existingIndex, 1);
+        }
+      } else {
+        if (priceValue > 0) {
+          rolePrices.push({ role_id: roleId, price: priceValue });
+        }
+      }
+      
+      return { ...prev, role_prices: rolePrices };
+    });
+  };
+
+  const getRolePrice = (roleId: string): string => {
+    const rolePrice = formData.role_prices.find(rp => rp.role_id === roleId);
+    return rolePrice ? rolePrice.price.toString() : '';
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -352,87 +380,118 @@ const ProductsPage: React.FC = () => {
     });
   };
 
-  const handleSaveProduct = async () => {
-    if (!formData.name.trim()) {
-      alert('Product name is required');
-      return;
-    }
-    if (!formData.sub_category_id) {
-      alert('Please select a sub-category');
-      return;
-    }
-    if (!formData.price || parseFloat(formData.price) <= 0) {
-      alert('Please enter a valid price');
-      return;
-    }
-    if (!formData.quantity || parseInt(formData.quantity) < 0) {
-      alert('Please enter a valid quantity');
-      return;
-    }
-    if (!editingProduct && !formData.sku.trim()) {
-      alert('SKU is required');
-      return;
-    }
+const handleSaveProduct = async () => {
+  if (!formData.name.trim()) {
+    alert('Product name is required');
+    return;
+  }
+  if (!formData.sub_category_id) {
+    alert('Please select a sub-category');
+    return;
+  }
+  if (!formData.price || parseFloat(formData.price) <= 0) {
+    alert('Please enter a valid default price');
+    return;
+  }
+  if (!formData.quantity || parseInt(formData.quantity) < 0) {
+    alert('Please enter a valid quantity');
+    return;
+  }
+  if (!editingProduct && !formData.sku.trim()) {
+    alert('SKU is required');
+    return;
+  }
 
-    // Validate that at least one role is selected
-    if (formData.product_visibility.length === 0) {
-      alert('Please select at least one customer role for product visibility');
+  if (formData.product_visibility.length === 0) {
+    alert('Please select at least one customer role for product visibility');
+    return;
+  }
+
+  if (!editingProduct) {
+    const totalImages = formData.images.length;
+    if (totalImages === 0) {
+      alert('Please upload at least 1 image');
       return;
     }
+  }
 
-    if (!editingProduct) {
-      const totalImages = formData.images.length;
-      if (totalImages === 0) {
-        alert('Please upload at least 1 image');
-        return;
-      }
-    }
+  setIsSubmitting(true);
+  try {
+    const formDataToSend = new FormData();
+    
+    formDataToSend.append('name', formData.name);
+    formDataToSend.append('description', formData.description);
+    formDataToSend.append('price', formData.price);
+    formDataToSend.append('quantity', formData.quantity);
+    formDataToSend.append('sub_category_id', formData.sub_category_id);
 
-    setIsSubmitting(true);
-    try {
-      const formDataToSend = new FormData();
+    formData.product_visibility.forEach((roleId) => {
+      formDataToSend.append('product_visibility[]', roleId);
+    });
+
+    // Handle role prices
+    if (editingProduct) {
+      // For updates: determine which role prices to remove and which to add/update
+      const existingRolePrices = editingProduct.role_prices || [];
+      const existingRoleIds = existingRolePrices.map(rp => rp.role_id);
+      const currentRoleIds = formData.role_prices.map(rp => rp.role_id);
       
-      formDataToSend.append('name', formData.name);
-      formDataToSend.append('description', formData.description);
-      formDataToSend.append('price', formData.price);
-      formDataToSend.append('quantity', formData.quantity);
-      formDataToSend.append('sub_category_id', formData.sub_category_id);
-
-      // Add product visibility (role IDs)
-      formData.product_visibility.forEach((roleId) => {
-        formDataToSend.append('product_visibility[]', roleId);
-      });
-
-      // Add images
-      formData.images.forEach((file) => {
-        formDataToSend.append('images[]', file);
-      });
-
-      if (editingProduct) {
-        formDataToSend.append('product_id', editingProduct._id || editingProduct.id || '');
-        
-        formData.removeImages.forEach((imgUrl) => {
-          const pathMatch = imgUrl.match(/\/storage\/(.+)$/);
-          if (pathMatch) {
-            formDataToSend.append('remove_images[]', pathMatch[1]);
-          }
+      // Role IDs that were removed
+      const removedRoleIds = existingRoleIds.filter(id => !currentRoleIds.includes(id));
+      
+      // Send removed role IDs
+      if (removedRoleIds.length > 0) {
+        removedRoleIds.forEach((roleId) => {
+          formDataToSend.append('remove_role_prices[]', roleId);
         });
-
-        await api.products.update(formDataToSend);
-      } else {
-        formDataToSend.append('sku', formData.sku);
-        await api.products.create(formDataToSend);
       }
-
-      setIsModalOpen(false);
-      resetForm();
-      fetchData();
-    } catch (err: any) {
-      alert(err.message || 'Failed to save product');
-    } finally {
-      setIsSubmitting(false);
+      
+      // Send current role prices (add/update)
+      if (formData.role_prices.length > 0) {
+        formData.role_prices.forEach((rolePrice, index) => {
+          formDataToSend.append(`role_prices[${index}][role_id]`, rolePrice.role_id);
+          formDataToSend.append(`role_prices[${index}][price]`, rolePrice.price.toString());
+        });
+      }
+    } else {
+      // For create: just send role prices if any
+      if (formData.role_prices.length > 0) {
+        formData.role_prices.forEach((rolePrice, index) => {
+          formDataToSend.append(`role_prices[${index}][role_id]`, rolePrice.role_id);
+          formDataToSend.append(`role_prices[${index}][price]`, rolePrice.price.toString());
+        });
+      }
     }
-  };
+
+    formData.images.forEach((file) => {
+      formDataToSend.append('images[]', file);
+    });
+
+    if (editingProduct) {
+      formDataToSend.append('product_id', editingProduct._id || editingProduct.id || '');
+      
+      formData.removeImages.forEach((imgUrl) => {
+        const pathMatch = imgUrl.match(/\/storage\/(.+)$/);
+        if (pathMatch) {
+          formDataToSend.append('remove_images[]', pathMatch[1]);
+        }
+      });
+
+      await api.products.update(formDataToSend);
+    } else {
+      formDataToSend.append('sku', formData.sku);
+      await api.products.create(formDataToSend);
+    }
+
+    setIsModalOpen(false);
+    resetForm();
+    fetchData();
+  } catch (err: any) {
+    alert(err.message || 'Failed to save product');
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
   const handleDelete = async () => {
     if (!editingProduct) return;
@@ -460,7 +519,7 @@ const ProductsPage: React.FC = () => {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold">Products</h1>
-          <p className="text-sm text-gray-600 mt-1">Manage product inventory</p>
+          <p className="text-sm text-gray-600 mt-1">Manage product inventory with role-based pricing</p>
         </div>
         <Button variant="primary" onClick={openCreateDialog}>
           <Package size={16} /> Add Product
@@ -583,9 +642,17 @@ const ProductsPage: React.FC = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <span className="font-semibold">
-                      ${Number(product.price || 0).toFixed(2)}
-                    </span>
+                    <div className="flex flex-col gap-1">
+                      <span className="font-semibold">
+                        ${Number(product.price || 0).toFixed(2)}
+                      </span>
+                      {product.role_prices && product.role_prices.length > 0 && (
+                        <div className="flex items-center gap-1 text-xs text-blue-600">
+                          +
+                          <span>{product.role_prices.length} role price{product.role_prices.length > 1 ? 's' : ''}</span>
+                        </div>
+                      )}
+                    </div>
                   </td>
                   <td className="px-6 py-4">
                     {getStockBadge(product.quantity)}
@@ -714,7 +781,7 @@ const ProductsPage: React.FC = () => {
 
           <div className="grid grid-cols-2 gap-4">
             <Input 
-              label="Price ($)" 
+              label="Default Price ($)" 
               type="number"
               step="0.01"
               min="0"
@@ -815,7 +882,7 @@ const ProductsPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Product Visibility - All Checkboxes */}
+          {/* Product Visibility */}
           <div className="bg-gray-50 p-4 border border-gray-200 rounded space-y-3">
             <div className="flex justify-between items-center">
               <h3 className="text-sm font-semibold text-gray-900">Product Visibility <span className="text-red-500">*</span></h3>
@@ -824,7 +891,7 @@ const ProductsPage: React.FC = () => {
               </span>
             </div>
             <p className="text-xs text-gray-500">
-              Select one or more customer roles who can view this product. You can select multiple roles.
+              Select customer roles who can view this product
             </p>
             
             <div className="border border-gray-200 rounded bg-white overflow-hidden">
@@ -833,7 +900,7 @@ const ProductsPage: React.FC = () => {
                   No roles available
                 </div>
               ) : (
-                <div className="max-h-60 overflow-y-auto">
+                <div className="max-h-48 overflow-y-auto">
                   {roles.map((role) => {
                     const roleId = role._id || role.id || '';
                     const isSelected = formData.product_visibility.includes(roleId);
@@ -868,6 +935,72 @@ const ProductsPage: React.FC = () => {
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Role-Based Pricing */}
+          <div className="bg-blue-50 p-4 border border-blue-200 rounded space-y-3">
+            <div className="flex items-center gap-2">
+              <DollarSign size={16} className="text-blue-600" />
+              <h3 className="text-sm font-semibold text-gray-900">Role-Based Pricing</h3>
+              <span className="text-xs text-gray-500">(Optional)</span>
+            </div>
+            <p className="text-xs text-gray-500">
+              Set custom prices for specific customer roles. General Users will use the default price above.
+            </p>
+            
+            {roles.filter(r => r.type !== 'general').length === 0 ? (
+              <div className="border border-blue-200 rounded bg-white p-4 text-center">
+                <p className="text-sm text-gray-500">No custom roles available</p>
+                <p className="text-xs text-gray-400 mt-1">All customers will use the default price</p>
+              </div>
+            ) : (
+              <div className="border border-blue-200 rounded bg-white overflow-hidden">
+                <div className="max-h-60 overflow-y-auto">
+                  {roles.filter(r => r.type !== 'general').map((role) => {
+                    const roleId = role._id || role.id || '';
+                    const rolePrice = getRolePrice(roleId);
+                    
+                    return (
+                      <div 
+                        key={roleId}
+                        className="flex items-center justify-between px-3 py-2.5 border-b border-gray-100 last:border-b-0"
+                      >
+                        <div className="flex items-center gap-2 flex-1">
+                          <span className="text-sm capitalize font-medium min-w-[120px]">{role.name}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-gray-500">$</span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={rolePrice}
+                            onChange={(e) => updateRolePrice(roleId, e.target.value)}
+                            placeholder={formData.price || "0.00"}
+                            className="w-24 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                          {rolePrice && (
+                            <button
+                              type="button"
+                              onClick={() => updateRolePrice(roleId, '')}
+                              className="text-gray-400 hover:text-red-500"
+                              title="Clear custom price"
+                            >
+                              <X size={14} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            {formData.role_prices.length > 0 && (
+              <p className="text-xs text-blue-600">
+                {formData.role_prices.length} custom price{formData.role_prices.length > 1 ? 's' : ''} set
+              </p>
+            )}
           </div>
 
           {/* Image Upload Section */}
