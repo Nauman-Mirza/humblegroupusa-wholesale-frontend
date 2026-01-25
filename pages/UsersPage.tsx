@@ -9,9 +9,19 @@ import {
   Dialog, 
   Switch, 
   Card,
-  Select
 } from '../components/UIComponents';
-import { Edit2, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Edit2, Trash2, ChevronLeft, ChevronRight, ShoppingCart } from 'lucide-react';
+
+interface Country {
+  code: string;
+  name: string;
+  iso3: string;
+}
+
+interface State {
+  code: string;
+  name: string;
+}
 
 const UsersPage: React.FC = () => {
   const [data, setData] = useState<{ data: User[]; total: number } | null>(null);
@@ -24,9 +34,14 @@ const UsersPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loadingDetail, setLoadingDetail] = useState(false);
 
-  // Roles for dropdown
   const [roles, setRoles] = useState<Role[]>([]);
   const [selectedRoleId, setSelectedRoleId] = useState<string>('');
+
+  // Location data
+  const [countries, setCountries] = useState<Country[]>([]);
+  const [states, setStates] = useState<State[]>([]);
+  const [loadingCountries, setLoadingCountries] = useState(false);
+  const [loadingStates, setLoadingStates] = useState(false);
 
   const fetchData = async () => {
     setLoading(true);
@@ -50,36 +65,131 @@ const UsersPage: React.FC = () => {
     }
   };
 
+  const fetchCountries = async () => {
+    try {
+      setLoadingCountries(true);
+      const response = await api.location.getCountries();
+      if (response.data?.countries) {
+        setCountries(response.data.countries);
+      }
+    } catch (err) {
+      console.error('Failed to load countries:', err);
+    } finally {
+      setLoadingCountries(false);
+    }
+  };
+
+  const fetchStates = async (iso2: string) => {
+    if (!iso2) {
+      setStates([]);
+      return;
+    }
+    
+    try {
+      setLoadingStates(true);
+      console.log('Fetching states for ISO2:', iso2);
+      const response = await api.location.getStatesByCountry(iso2);
+      console.log('States Response:', response);
+      if (response.data?.states) {
+        console.log('States loaded:', response.data.states.length);
+        setStates(response.data.states);
+      } else {
+        setStates([]);
+      }
+    } catch (err) {
+      console.error('Failed to load states:', err);
+      setStates([]);
+    } finally {
+      setLoadingStates(false);
+    }
+  };
+
   useEffect(() => {
     fetchData();
     fetchRoles();
+    fetchCountries();
   }, [page]);
 
   const openEditDialog = async (user: User) => {
     setLoadingDetail(true);
     setIsEditOpen(true);
     setSelectedRoleId('');
+    setStates([]);
+    
     try {
-      const detail = await api.users.getDetail(user._id);
+      const detail = await api.users.getDetail(user._id || user.id || '');
+      const userData = detail.data.user as User;
+      const shippingAddress = detail.data.shipping_address;
+      
+      console.log('User Detail:', userData);
+      console.log('Shipping Address:', shippingAddress);
+      console.log('Country Code:', shippingAddress?.country_code);
+      console.log('State:', shippingAddress?.state);
+      
       setCurrentUser({
-        ...detail.data.user,
-        shipping_address: detail.data.shipping_address
-      });
+        ...userData,
+        shipping_address: shippingAddress
+      } as UserDetail);
+      
+      // Load states if country_code exists
+      if (shippingAddress?.country_code) {
+        console.log('Fetching states for:', shippingAddress.country_code);
+        await fetchStates(shippingAddress.country_code);
+      }
       
       // Try to find the role ID based on the role name
-      if (detail.data.user.roles && detail.data.user.roles.length > 0) {
-        const userRoleName = detail.data.user.roles[0]?.toLowerCase();
+      if (userData.roles && userData.roles.length > 0) {
+        const userRoleName = userData.roles[0]?.toLowerCase();
         const matchedRole = roles.find(r => r.name.toLowerCase() === userRoleName);
         if (matchedRole) {
           setSelectedRoleId(matchedRole._id || matchedRole.id || '');
         }
       }
     } catch (err: any) {
+      console.error('Error loading user details:', err);
       alert(err.message || 'Failed to load user details');
       setIsEditOpen(false);
     } finally {
       setLoadingDetail(false);
     }
+  };
+
+  const handleCountryChange = async (countryCode: string) => {
+    if (!currentUser) return;
+    
+    const selectedCountry = countries.find(c => c.code === countryCode);
+    
+    setCurrentUser({
+      ...currentUser,
+      shipping_address: {
+        ...(currentUser.shipping_address || {} as ShippingAddress),
+        country_code: countryCode,
+        country: selectedCountry?.name || '',
+        state: '',
+        state_code: '',
+      }
+    });
+
+    if (countryCode) {
+      await fetchStates(countryCode);
+    } else {
+      setStates([]);
+    }
+  };
+
+  const handleStateChange = (stateName: string) => {
+    if (!currentUser) return;
+    
+    const selectedState = states.find(s => s.name === stateName);
+    
+    setCurrentUser({
+      ...currentUser,
+      shipping_address: {
+        ...(currentUser.shipping_address || {} as ShippingAddress),
+        state: stateName,
+        state_code: selectedState?.code || '',
+      }
+    });
   };
 
   const handleSaveUser = async (e: React.FormEvent) => {
@@ -93,7 +203,8 @@ const UsersPage: React.FC = () => {
         email: currentUser.email,
         phone: currentUser.phone,
         company_name: currentUser.company_name,
-        website: currentUser.website || ''
+        website: currentUser.website || '',
+        can_order: currentUser.can_order
       };
 
       // Add role_id if selected
@@ -105,11 +216,11 @@ const UsersPage: React.FC = () => {
         payload.shipping_address = currentUser.shipping_address;
       }
 
-      await api.users.update(currentUser._id, payload);
+      await api.users.update(currentUser._id || currentUser.id || '', payload);
       
-      const originalUser = data?.data.find(u => u._id === currentUser._id);
+      const originalUser = data?.data.find(u => (u._id || u.id) === (currentUser._id || currentUser.id));
       if (originalUser && currentUser.is_active !== originalUser.is_active) {
-        await api.users.setActive(currentUser._id, currentUser.is_active);
+        await api.users.setActive(currentUser._id || currentUser.id || '', currentUser.is_active);
       }
       
       setIsEditOpen(false);
@@ -125,7 +236,7 @@ const UsersPage: React.FC = () => {
     if (!currentUser) return;
     setIsSubmitting(true);
     try {
-      await api.users.delete(currentUser._id);
+      await api.users.delete(currentUser._id || currentUser.id || '');
       setIsDeleteOpen(false);
       fetchData();
     } catch (err: any) {
@@ -152,9 +263,9 @@ const UsersPage: React.FC = () => {
           </div>
         ) : (
           <>
-            <Table headers={['Customer', 'Company', 'Contact', 'Role', 'Status', 'Actions']}>
+            <Table headers={['Customer', 'Company', 'Contact', 'Role', 'Status', 'Can Order', 'Actions']}>
               {data?.data.map((user) => (
-                <tr key={user._id} className="hover:bg-gray-50">
+                <tr key={user._id || user.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4">
                     <div className="flex flex-col">
                       <span className="font-semibold">{user.first_name} {user.last_name}</span>
@@ -186,6 +297,17 @@ const UsersPage: React.FC = () => {
                     </Badge>
                   </td>
                   <td className="px-6 py-4">
+                    <Badge variant={user.can_order ? 'success' : 'warning'}>
+                      {user.can_order ? (
+                        <span className="flex items-center gap-1">
+                          <ShoppingCart size={12} /> Enabled
+                        </span>
+                      ) : (
+                        'Disabled'
+                      )}
+                    </Badge>
+                  </td>
+                  <td className="px-6 py-4">
                     <div className="flex gap-2 justify-end">
                       <Button 
                         variant="outline" 
@@ -198,7 +320,13 @@ const UsersPage: React.FC = () => {
                         variant="outline" 
                         size="sm"
                         className="text-error hover:bg-error/5"
-                        onClick={() => { setCurrentUser(user as UserDetail); setIsDeleteOpen(true); }}
+                        onClick={() => { 
+                          setCurrentUser({
+                            ...user,
+                            shipping_address: null
+                          } as UserDetail); 
+                          setIsDeleteOpen(true); 
+                        }}
                       >
                         <Trash2 size={14} />
                       </Button>
@@ -252,7 +380,7 @@ const UsersPage: React.FC = () => {
             <div className="w-6 h-6 border-2 border-black border-t-transparent animate-spin rounded-full" />
           </div>
         ) : currentUser && (
-          <form className="space-y-5" onSubmit={handleSaveUser}>
+          <div className="space-y-5">
             <div className="grid grid-cols-2 gap-4">
               <Input 
                 label="First Name" 
@@ -293,23 +421,26 @@ const UsersPage: React.FC = () => {
             />
 
             {/* Role Selection */}
-            <Select 
-              label="User Role"
-              value={selectedRoleId}
-              onChange={(e) => setSelectedRoleId(e.target.value)}
-              options={[
-                { label: 'Select a role', value: '' },
-                ...roles.map(r => ({ 
-                  label: r.name.charAt(0).toUpperCase() + r.name.slice(1), 
-                  value: r._id || r.id || '' 
-                }))
-              ]}
-            />
-            {currentUser.roles && currentUser.roles.length > 0 && (
-              <p className="text-xs text-gray-500 -mt-3">
-                Current role: <span className="capitalize font-medium">{currentUser.roles.join(', ')}</span>
-              </p>
-            )}
+            <div className="space-y-1">
+              <label className="block text-sm font-medium text-gray-700">User Role</label>
+              <select
+                value={selectedRoleId}
+                onChange={(e) => setSelectedRoleId(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
+              >
+                <option value="">Select a role</option>
+                {roles.map(r => (
+                  <option key={r._id || r.id} value={r._id || r.id || ''}>
+                    {r.name.charAt(0).toUpperCase() + r.name.slice(1)}
+                  </option>
+                ))}
+              </select>
+              {currentUser.roles && currentUser.roles.length > 0 && (
+                <p className="text-xs text-gray-500">
+                  Current role: <span className="capitalize font-medium">{currentUser.roles.join(', ')}</span>
+                </p>
+              )}
+            </div>
 
             <div className="bg-gray-50 p-5 border border-gray-200 rounded space-y-4">
               <h3 className="text-sm font-semibold text-gray-900">Shipping Address</h3>
@@ -333,6 +464,62 @@ const UsersPage: React.FC = () => {
               />
 
               <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="block text-sm font-medium text-gray-700">Country</label>
+                  <select
+                    value={currentUser.shipping_address?.country_code || ''}
+                    onChange={(e) => handleCountryChange(e.target.value)}
+                    disabled={loadingCountries}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  >
+                    <option value="">
+                      {loadingCountries ? 'Loading countries...' : 'Select a country'}
+                    </option>
+                    {countries.map((country) => (
+                      <option key={country.code} value={country.code}>
+                        {country.name}
+                      </option>
+                    ))}
+                  </select>
+                  {currentUser.shipping_address?.country && (
+                    <p className="text-xs text-gray-500">
+                      Current: {currentUser.shipping_address.country}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-sm font-medium text-gray-700">State / Province</label>
+                  <select
+                    value={currentUser.shipping_address?.state || ''}
+                    onChange={(e) => handleStateChange(e.target.value)}
+                    disabled={!currentUser.shipping_address?.country_code || loadingStates}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  >
+                    <option value="">
+                      {!currentUser.shipping_address?.country_code 
+                        ? 'Select country first'
+                        : loadingStates 
+                        ? 'Loading states...' 
+                        : states.length === 0
+                        ? 'No states available'
+                        : 'Select a state'}
+                    </option>
+                    {states.map((state, index) => (
+                      <option key={index} value={state.name}>
+                        {state.name}
+                      </option>
+                    ))}
+                  </select>
+                  {currentUser.shipping_address?.state && (
+                    <p className="text-xs text-gray-500">
+                      Current: {currentUser.shipping_address.state}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
                 <Input 
                   label="City" 
                   value={currentUser.shipping_address?.city || ''} 
@@ -342,7 +529,7 @@ const UsersPage: React.FC = () => {
                   })}
                 />
                 <Input 
-                  label="Postcode" 
+                  label="Postcode / ZIP" 
                   value={currentUser.shipping_address?.postcode || ''} 
                   onChange={(e) => setCurrentUser({
                     ...currentUser, 
@@ -350,15 +537,6 @@ const UsersPage: React.FC = () => {
                   })}
                 />
               </div>
-
-              <Input 
-                label="Country" 
-                value={currentUser.shipping_address?.country || ''} 
-                onChange={(e) => setCurrentUser({
-                  ...currentUser, 
-                  shipping_address: { ...(currentUser.shipping_address || {} as ShippingAddress), country: e.target.value }
-                })}
-              />
             </div>
 
             <div className="flex items-center justify-between p-5 border-2 border-gray-200 bg-gradient-to-r from-gray-50 to-white rounded-lg">
@@ -371,7 +549,7 @@ const UsersPage: React.FC = () => {
                 </div>
                 <p className="text-xs text-gray-500 leading-relaxed">
                   {currentUser.is_active 
-                    ? 'Customer can log in and place orders' 
+                    ? 'Customer can log in and access the platform' 
                     : 'Customer account is disabled'
                   }
                 </p>
@@ -382,7 +560,30 @@ const UsersPage: React.FC = () => {
                 label="Toggle account status"
               />
             </div>
-          </form>
+
+            <div className="flex items-center justify-between p-5 border-2 border-blue-200 bg-gradient-to-r from-blue-50 to-white rounded-lg">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <ShoppingCart size={16} className="text-blue-600" />
+                  <span className="text-sm font-bold text-gray-900">Order Permissions</span>
+                  <Badge variant={currentUser.can_order ? 'success' : 'warning'}>
+                    {currentUser.can_order ? 'Enabled' : 'Disabled'}
+                  </Badge>
+                </div>
+                <p className="text-xs text-gray-500 leading-relaxed">
+                  {currentUser.can_order 
+                    ? 'Customer can place orders and make purchases' 
+                    : 'Customer cannot place orders (catalog access only)'
+                  }
+                </p>
+              </div>
+              <Switch 
+                checked={currentUser.can_order} 
+                onChange={(val) => setCurrentUser({...currentUser, can_order: val})}
+                label="Toggle order permissions"
+              />
+            </div>
+          </div>
         )}
       </Dialog>
 

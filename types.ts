@@ -8,6 +8,7 @@ export interface User {
   website?: string;
   company_name: string;
   is_active: boolean;
+  can_order: boolean;
   roles?: string[];
   
   agree_min_order: boolean;

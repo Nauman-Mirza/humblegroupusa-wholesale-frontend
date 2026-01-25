@@ -521,6 +521,29 @@ export const api = {
       });
       return handleResponse(response);
     }
+  },
+  location: {
+    getCountries: async () => {
+      const response = await fetch(`https://api.humblegroupusa.com/api/countries`, {
+        headers: { 
+          'Accept': 'application/json'
+        }
+      });
+      return handleResponse(response);
+    },
+
+    getStatesByCountry: async (iso2: string, search?: string) => {
+      const query = new URLSearchParams();
+      query.append('iso2', iso2);
+      if (search) query.append('search', search);
+
+      const response = await fetch(`https://api.humblegroupusa.com/api/countries/states?${query}`, {
+        headers: { 
+          'Accept': 'application/json'
+        }
+      });
+      return handleResponse(response);
+    }
   }
 
 
