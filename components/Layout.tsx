@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Users, Tag, Layers, Grid, Shield, LogOut, ChevronLeft, ChevronRight, UserCog } from 'lucide-react';
+import { Users, Tag, Layers, Grid, Shield, LogOut, ChevronLeft, ChevronRight, UserCog, Package } from 'lucide-react';
 import { api } from '../services/api';
 
 interface LayoutProps {
@@ -31,11 +31,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   const navItems = [
     { label: 'Wholesale Customers', path: '/users', icon: Users },
-    { label: 'Roles', path: '/roles', icon: UserCog }, // Visible to both admin and super_admin
+    { label: 'Roles', path: '/roles', icon: UserCog },
     { label: 'Brands', path: '/brands', icon: Tag },
     { label: 'Categories', path: '/categories', icon: Layers },
     { label: 'Sub-Categories', path: '/sub-categories', icon: Grid },
     { label: 'Products', path: '/products', icon: Tag },
+    { label: 'Orders', path: '/orders', icon: Package },
   ];
 
   // Only show Admin Management to super_admin

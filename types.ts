@@ -148,3 +148,30 @@ export interface Role {
   created_at: string;
   updated_at: string;
 }
+
+export interface OrderItem {
+  product_id: number;
+  sku: string;
+  quantity: number;
+}
+
+export interface OrderUser {
+  _id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  company_name: string;
+}
+
+export interface Order {
+  _id: string;
+  user_id: string;
+  user?: OrderUser;
+  warehence_order_id: number | string;
+  total: number;
+  status: string;
+  items: OrderItem[];
+  items_count: number;
+  created_at: string;
+  updated_at: string;
+}

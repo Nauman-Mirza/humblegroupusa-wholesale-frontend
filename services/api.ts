@@ -544,7 +544,40 @@ export const api = {
       });
       return handleResponse(response);
     }
-  }
+  },
+
+  orders: {
+    getAll: async (params: { per_page: number; page: number; search?: string; status?: string; user_id?: string; min_total?: number; max_total?: number }) => {
+      const query = new URLSearchParams();
+      query.append('per_page', params.per_page.toString());
+      query.append('page', params.page.toString());
+      if (params.search) query.append('search', params.search);
+      if (params.status) query.append('status', params.status);
+      if (params.user_id) query.append('user_id', params.user_id);
+      if (params.min_total !== undefined) query.append('min_total', params.min_total.toString());
+      if (params.max_total !== undefined) query.append('max_total', params.max_total.toString());
+
+      const response = await fetch(`${API_BASE}/orders?${query}`, {
+        headers: { 
+          'Token': getToken() || '',
+          'Accept': 'application/json'
+        }
+      });
+      
+      const result = await handleResponse(response);
+      
+      // The response structure is: { data: [{ items: [...], pagination: {...} }] }
+      const responseData = result.data?.[0] || {};
+      
+      return {
+        data: responseData.items || [],
+        total: responseData.pagination?.total || 0,
+        per_page: responseData.pagination?.per_page || 10,
+        current_page: responseData.pagination?.current_page || 1,
+        last_page: responseData.pagination?.last_page || 1,
+      };
+    },
+  },
 
 
 };
