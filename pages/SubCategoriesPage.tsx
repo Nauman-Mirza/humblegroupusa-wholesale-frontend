@@ -77,7 +77,7 @@ const SubCategoriesPage: React.FC = () => {
       });
       setData(res);
     } catch (err: any) {
-      alert(err.message || 'Failed to load sub-categories');
+      alert(err.message || 'Failed to load Packaging Type');
     } finally {
       setLoading(false);
     }
@@ -160,7 +160,7 @@ const SubCategoriesPage: React.FC = () => {
 
   const handleSave = async () => {
     if (!currentSubCategory.name?.trim()) {
-      alert('Sub-category name is required');
+      alert('Packaging Type name is required');
       return;
     }
     if (!currentSubCategory.brand_id) {
@@ -269,8 +269,8 @@ const SubCategoriesPage: React.FC = () => {
     <div className="max-w-[1400px] mx-auto space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold">Sub-Categories</h1>
-          <p className="text-sm text-gray-600 mt-1">Manage product sub-categories with images</p>
+          <h1 className="text-2xl font-bold">Packaging Types</h1>
+          <p className="text-sm text-gray-600 mt-1">Manage product Packaging Type with images</p>
         </div>
         <Button 
           variant="primary" 
@@ -279,7 +279,7 @@ const SubCategoriesPage: React.FC = () => {
           onClick={openCreateModal}
           disabled={brands.length === 0}
         >
-          <Plus size={16} /> Add Sub-Category
+          <Plus size={16} /> Add Packaging Type
         </Button>
       </div>
 
@@ -289,7 +289,7 @@ const SubCategoriesPage: React.FC = () => {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
             <input 
               type="text" 
-              placeholder="Search sub-categories..."
+              placeholder="Search Packaging types..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full h-10 bg-white border border-border rounded pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-black/5"
@@ -325,11 +325,11 @@ const SubCategoriesPage: React.FC = () => {
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20">
             <div className="w-8 h-8 border-2 border-black border-t-transparent rounded-full animate-spin" />
-            <span className="text-sm text-gray-600 mt-4">Loading sub-categories...</span>
+            <span className="text-sm text-gray-600 mt-4">Loading Packaging Types...</span>
           </div>
         ) : (
           <>
-            <Table headers={['Sub-Category', 'Brand', 'Category', 'Images', 'Actions']}>
+            <Table headers={['Packaging Type', 'Brand', 'Category', 'Images', 'Actions']}>
               {data?.data.map((subCat) => (
                 <tr key={subCat.id || subCat._id} className="hover:bg-gray-50">
                   <td className="px-6 py-4">
@@ -382,7 +382,7 @@ const SubCategoriesPage: React.FC = () => {
 
             <div className="px-6 py-4 bg-gray-50 flex justify-between items-center border-t border-border">
               <span className="text-sm text-gray-600">
-                Showing {data?.data.length || 0} of {data?.total || 0} sub-categories
+                Showing {data?.data.length || 0} of {data?.total || 0} Packaging Types
               </span>
               <div className="flex items-center gap-2">
                 <Button 
@@ -415,7 +415,7 @@ const SubCategoriesPage: React.FC = () => {
           setIsModalOpen(false);
           setModalCategories([]);
         }} 
-        title={currentSubCategory.id || currentSubCategory._id ? "Edit Sub-Category" : "Create Sub-Category"}
+        title={currentSubCategory.id || currentSubCategory._id ? "Edit Packaging Type" : "Create Packaging Type"}
         footer={(
           <>
             <Button variant="outline" onClick={() => {
@@ -423,14 +423,14 @@ const SubCategoriesPage: React.FC = () => {
               setModalCategories([]);
             }}>Cancel</Button>
             <Button variant="primary" loading={isSubmitting} onClick={handleSave}>
-              {currentSubCategory.id || currentSubCategory._id ? 'Save Changes' : 'Create Sub-Category'}
+              {currentSubCategory.id || currentSubCategory._id ? 'Save Changes' : 'Create Packaging Type'}
             </Button>
           </>
         )}
       >
         <div className="space-y-5">
           <Input 
-            label="Sub-Category Name" 
+            label="Packaging Type Name" 
             placeholder="e.g., Running Shoes, T-Shirts"
             value={currentSubCategory.name || ''} 
             onChange={(e) => setCurrentSubCategory({...currentSubCategory, name: e.target.value})}
@@ -597,12 +597,12 @@ const SubCategoriesPage: React.FC = () => {
       <Dialog 
         isOpen={isDeleteOpen} 
         onClose={() => setIsDeleteOpen(false)} 
-        title="Delete Sub-Category"
+        title="Delete Packaging Type"
         footer={(
           <>
             <Button variant="outline" onClick={() => setIsDeleteOpen(false)}>Cancel</Button>
             <Button variant="danger" loading={isSubmitting} onClick={handleDelete}>
-              Delete Sub-Category
+              Delete Packaging Type
             </Button>
           </>
         )}

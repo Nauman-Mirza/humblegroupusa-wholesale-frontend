@@ -77,7 +77,7 @@ const ProductsPage: React.FC = () => {
     }
   }, [filterBrandId]);
 
-  // Load filter sub-categories when filter category changes
+  // Load filter Packaging Type when filter category changes
   useEffect(() => {
     if (filterCategoryId) {
       loadFilterSubCategories(filterCategoryId);
@@ -98,7 +98,7 @@ const ProductsPage: React.FC = () => {
     }
   }, [formData.brand_id]);
 
-  // Load form sub-categories when form category changes
+  // Load form Packaging Type when form category changes
   useEffect(() => {
     if (formData.category_id) {
       loadFormSubCategories(formData.category_id);
@@ -141,7 +141,7 @@ const ProductsPage: React.FC = () => {
       const res = await api.subCategories.getAll({ per_page: 100, page: 1, category_id: categoryId });
       setFilterSubCategories(res.data);
     } catch (err: any) {
-      console.error('Failed to load sub-categories:', err);
+      console.error('Failed to load Packaging Type:', err);
     }
   };
 
@@ -159,7 +159,7 @@ const ProductsPage: React.FC = () => {
       const res = await api.subCategories.getAll({ per_page: 100, page: 1, category_id: categoryId });
       setFormSubCategories(res.data);
     } catch (err: any) {
-      console.error('Failed to load sub-categories:', err);
+      console.error('Failed to load Packaging Type:', err);
     }
   };
 
@@ -386,7 +386,7 @@ const handleSaveProduct = async () => {
     return;
   }
   if (!formData.sub_category_id) {
-    alert('Please select a sub-category');
+    alert('Please select a packaging type');
     return;
   }
   if (!formData.price || parseFloat(formData.price) <= 0) {
@@ -583,7 +583,7 @@ const handleSaveProduct = async () => {
           disabled={!filterCategoryId}
           className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black disabled:bg-gray-100 disabled:cursor-not-allowed"
         >
-          <option value="">All Sub-Categories</option>
+          <option value="">All Packaging Types</option>
           {filterSubCategories.map((subCat) => (
             <option key={subCat._id || subCat.id} value={subCat._id || subCat.id}>
               {subCat.name}
@@ -861,7 +861,7 @@ const handleSaveProduct = async () => {
 
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                Sub-Category <span className="text-red-500">*</span>
+                Packaging Type <span className="text-red-500">*</span>
               </label>
               <select
                 value={formData.sub_category_id}
@@ -871,7 +871,7 @@ const handleSaveProduct = async () => {
                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black disabled:bg-gray-100 disabled:cursor-not-allowed bg-white"
               >
                 <option value="">
-                  {!formData.category_id ? 'Select category first' : formSubCategories.length === 0 ? 'No sub-categories available' : 'Select Sub-Category'}
+                  {!formData.category_id ? 'Select category first' : formSubCategories.length === 0 ? 'No Packaging Type available' : 'Select Packaging Type'}
                 </option>
                 {formSubCategories.map((subCat) => (
                   <option key={subCat._id || subCat.id} value={subCat._id || subCat.id}>

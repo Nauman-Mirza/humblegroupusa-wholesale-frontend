@@ -34,7 +34,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { label: 'Roles', path: '/roles', icon: UserCog },
     { label: 'Brands', path: '/brands', icon: Tag },
     { label: 'Categories', path: '/categories', icon: Layers },
-    { label: 'Sub-Categories', path: '/sub-categories', icon: Grid },
+    { label: 'Packaging Type', path: '/sub-categories', icon: Grid },
     { label: 'Products', path: '/products', icon: Tag },
     { label: 'Orders', path: '/orders', icon: Package },
   ];
