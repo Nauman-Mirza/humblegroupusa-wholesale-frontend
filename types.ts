@@ -172,6 +172,12 @@ export interface Order {
   status: string;
   items: OrderItem[];
   items_count: number;
+  attachments?: Array<{
+    name: string;
+    url: string;
+    file_extension: string;
+  }>;
+  attachment_path?: string;
   created_at: string;
   updated_at: string;
 }

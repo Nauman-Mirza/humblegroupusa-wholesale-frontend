@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { Order } from '../types';
 import { Table, Button, Card, Badge } from '../components/UIComponents';
-import { Search, Filter, ChevronLeft, ChevronRight, Package, User, Calendar, ChevronDown, ChevronUp } from 'lucide-react';
+import { Search, Filter, ChevronLeft, ChevronRight, Package, User, Calendar, ChevronDown, ChevronUp, Download, FileText, File } from 'lucide-react';
 
 const OrdersPage: React.FC = () => {
   const [data, setData] = useState<{ data: Order[]; total: number } | null>(null);
@@ -56,6 +56,25 @@ const OrdersPage: React.FC = () => {
     }
   };
 
+  const getFileIcon = (extension: string) => {
+    const ext = extension.toLowerCase();
+    if (ext === 'pdf') return <FileText size={16} className="text-red-500" />;
+    if (['jpg', 'jpeg', 'png'].includes(ext)) return <FileText size={16} className="text-blue-500" />;
+    if (['doc', 'docx'].includes(ext)) return <FileText size={16} className="text-blue-600" />;
+    return <File size={16} className="text-gray-500" />;
+  };
+
+  const handleDownload = (url: string, filename: string) => {
+    // Create a temporary link and trigger download
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.target = '_blank';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="max-w-[1400px] mx-auto space-y-6">
       <div className="flex justify-between items-center">
@@ -100,12 +119,12 @@ const OrdersPage: React.FC = () => {
                     onClick={() => toggleOrder(order._id)}
                   >
                     <div className="flex items-center justify-between">
-                      <div className="flex-1 grid grid-cols-4 gap-4 items-center">
+                      <div className="flex-1 grid grid-cols-5 gap-4 items-center">
                         {/* Order ID */}
                         <div className="flex flex-col">
                           <span className="text-xs text-gray-500 uppercase tracking-wider mb-1">Order ID</span>
                           <span className="font-mono text-sm font-semibold text-gray-900">
-                            {order._id}
+                            {order._id.slice(-8)}
                           </span>
                         </div>
 
@@ -140,6 +159,26 @@ const OrdersPage: React.FC = () => {
                           </div>
                           <span className="text-xs text-gray-500 mt-1">{order.items_count} items</span>
                         </div>
+
+                        {/* Attachment Indicator */}
+                        <div className="flex flex-col">
+                          <span className="text-xs text-gray-500 uppercase tracking-wider mb-1">Attachment</span>
+                          {order.attachments && order.attachments.length > 0 ? (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDownload(order.attachments[0].url, order.attachments[0].name);
+                              }}
+                              className="flex items-center gap-1.5 text-xs text-gray-700 hover:text-black transition-colors group"
+                              title={order.attachments[0].name}
+                            >
+                              <Download size={14} className="text-gray-500 group-hover:text-black" />
+                              <span className="truncate max-w-[120px]">{order.attachments[0].name}</span>
+                            </button>
+                          ) : (
+                            <span className="text-xs text-gray-400">—</span>
+                          )}
+                        </div>
                       </div>
 
                       {/* Expand Button */}
@@ -156,6 +195,7 @@ const OrdersPage: React.FC = () => {
                   {/* Order Details (Expanded) */}
                   {expandedOrder === order._id && (
                     <div className="px-6 pb-4 bg-gray-50 border-t border-border">
+                      {/* Order Items */}
                       <div className="mt-4">
                         <h4 className="text-xs font-semibold text-gray-700 uppercase tracking-wider mb-3">
                           Order Items
@@ -193,6 +233,51 @@ const OrdersPage: React.FC = () => {
                           </table>
                         </div>
                       </div>
+
+                      {/* Attachments Section */}
+                      {order.attachments && order.attachments.length > 0 && (
+                        <div className="mt-4">
+                          <h4 className="text-xs font-semibold text-gray-700 uppercase tracking-wider mb-3">
+                            Attached Documents
+                          </h4>
+                          <div className="bg-white rounded border border-border">
+                            {order.attachments.map((attachment, idx) => (
+                              <div 
+                                key={idx} 
+                                className="flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors border-b border-border last:border-b-0"
+                              >
+                                <div className="flex items-center gap-3">
+                                  {getFileIcon(attachment.file_extension)}
+                                  <div>
+                                    <p className="text-sm font-medium text-gray-900">
+                                      {attachment.name}
+                                    </p>
+                                    <p className="text-xs text-gray-500 uppercase">
+                                      {attachment.file_extension}
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    onClick={() => window.open(attachment.url, '_blank')}
+                                    className="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 transition-colors flex items-center gap-1.5"
+                                  >
+                                    <FileText size={14} />
+                                    View
+                                  </button>
+                                  <button
+                                    onClick={() => handleDownload(attachment.url, attachment.name)}
+                                    className="px-3 py-1.5 text-xs font-medium text-white bg-black rounded hover:bg-gray-800 transition-colors flex items-center gap-1.5"
+                                  >
+                                    <Download size={14} />
+                                    Download
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
