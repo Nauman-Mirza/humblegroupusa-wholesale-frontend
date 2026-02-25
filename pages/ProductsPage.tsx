@@ -389,10 +389,6 @@ const handleSaveProduct = async () => {
     alert('Please select a packaging type');
     return;
   }
-  if (!formData.price || parseFloat(formData.price) <= 0) {
-    alert('Please enter a valid default price');
-    return;
-  }
   if (!formData.quantity || parseInt(formData.quantity) < 0) {
     alert('Please enter a valid quantity');
     return;
