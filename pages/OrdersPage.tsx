@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { Order } from '../types';
-import { Table, Button, Card, Badge } from '../components/UIComponents';
+import { Table, Button, Card, Badge, Dialog } from '../components/UIComponents';
 import { Search, Filter, ChevronLeft, ChevronRight, Package, User, Calendar, ChevronDown, ChevronUp, Download, FileText, File } from 'lucide-react';
+
 
 const OrdersPage: React.FC = () => {
   const [data, setData] = useState<{ data: Order[]; total: number } | null>(null);
@@ -10,6 +11,10 @@ const OrdersPage: React.FC = () => {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
+  const [isExportOpen, setIsExportOpen] = useState(false);
+  const [exportDateFrom, setExportDateFrom] = useState('');
+  const [exportDateTo, setExportDateTo] = useState('');
+  const [isExporting, setIsExporting] = useState(false);
 
   const fetchData = async () => {
     setLoading(true);
@@ -26,6 +31,88 @@ const OrdersPage: React.FC = () => {
       setLoading(false);
     }
   };
+
+  const handleExport = async () => {
+  setIsExporting(true);
+  try {
+    const res = await api.orders.exportData({
+      date_from: exportDateFrom || undefined,
+      date_to: exportDateTo || undefined,
+    });
+
+    const orders = res?.data?.rows || [];
+    if (!Array.isArray(orders) || orders.length === 0) {
+      alert('No data found for the selected range.');
+      return;
+    }
+
+    const rows: any[][] = [];
+
+    for (const order of orders) {
+      for (const item of order.items ?? []) {
+        rows.push([
+          order.order_id,
+          // Prefix with ' to force Excel to treat as text — prevents scientific notation
+          "'" + String(order.warehence_order_id),
+          order.status.charAt(0).toUpperCase() + order.status.slice(1),
+          order.total,
+          order.items_count,
+          order.created_at?.slice(0, 10) ?? '',
+          order.user_name,
+          order.user_email,
+          String(order.user_phone),
+          order.company_name,
+          order.can_order ? 'Yes' : 'No',
+          order.ship_first_name,
+          order.ship_last_name,
+          order.ship_company,
+          order.ship_street1,
+          order.ship_street2 ?? '',
+          order.ship_city,
+          order.ship_state,
+          String(order.ship_postal_code),
+          order.ship_country,
+          order.ship_country_code,
+          item.sku,
+          item.product_name,
+          item.quantity,
+          item.default_price,
+          parseFloat((item.quantity * item.default_price).toFixed(2)),
+        ]);
+      }
+    }
+
+    const headers = [
+      'Order ID', 'Warehouse Order ID', 'Status', 'Order Total ($)', 'Items Count', 'Order Date',
+      'Customer Name', 'Email', 'Phone', 'Company', 'Can Order',
+      'Ship First Name', 'Ship Last Name', 'Ship Company', 'Street 1', 'Street 2',
+      'City', 'State', 'Postal Code', 'Country', 'Country Code',
+      'SKU', 'Product Name', 'Qty', 'Unit Price ($)', 'Line Total ($)',
+    ];
+
+    const escape = (val: any) => `"${String(val ?? '').replace(/"/g, '""')}"`;
+    const csv = [
+      headers.map(escape).join(','),
+      ...rows.map(row => row.map(escape).join(','))
+    ].join('\n');
+
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `orders-${exportDateFrom || 'all'}-to-${exportDateTo || 'all'}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    setIsExportOpen(false);
+  } catch (err: any) {
+    alert(err.message || 'Export failed');
+  } finally {
+    setIsExporting(false);
+  }
+};
 
   useEffect(() => {
     const timer = setTimeout(() => fetchData(), 300);
@@ -86,6 +173,9 @@ const OrdersPage: React.FC = () => {
           <Badge variant="neutral">
             Total Orders: {data?.total || 0}
           </Badge>
+          <Button variant="outline" onClick={() => setIsExportOpen(true)}>
+            <Download size={14} className="mr-1" /> Export CSV
+          </Button>
         </div>
       </div>
 
@@ -313,6 +403,45 @@ const OrdersPage: React.FC = () => {
           </>
         )}
       </Card>
+      <Dialog
+  isOpen={isExportOpen}
+  onClose={() => setIsExportOpen(false)}
+  title="Export Orders to CSV"
+  footer={(
+    <>
+      <Button variant="outline" onClick={() => setIsExportOpen(false)}>Cancel</Button>
+      <Button variant="primary" loading={isExporting} onClick={handleExport}>
+        <Download size={14} className="mr-1" /> Export
+      </Button>
+    </>
+  )}
+>
+  <div className="space-y-4 py-2">
+    <p className="text-sm text-gray-600">
+      Select a date range to filter exported orders. Leave blank to export all.
+    </p>
+    <div className="grid grid-cols-2 gap-4">
+      <div className="space-y-1">
+        <label className="block text-sm font-medium text-gray-700">Date From</label>
+        <input
+          type="date"
+          value={exportDateFrom}
+          onChange={(e) => setExportDateFrom(e.target.value)}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent text-sm"
+        />
+      </div>
+      <div className="space-y-1">
+        <label className="block text-sm font-medium text-gray-700">Date To</label>
+        <input
+          type="date"
+          value={exportDateTo}
+          onChange={(e) => setExportDateTo(e.target.value)}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent text-sm"
+        />
+      </div>
+    </div>
+  </div>
+</Dialog>
     </div>
   );
 };

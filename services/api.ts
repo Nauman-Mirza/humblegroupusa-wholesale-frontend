@@ -193,7 +193,44 @@ export const api = {
         body: JSON.stringify({ user_id: userId })
       });
       return handleResponse(response);
-    }
+    },
+
+    create: async (data: {
+    first_name: string;
+    last_name: string;
+    email: string;
+    password: string;
+    password_confirmation: string;
+    phone: string;
+    company_name: string;
+    website?: string;
+    can_order: boolean;
+    is_active: boolean;
+    role_id?: string;
+    shipping_address?: {
+      address_1: string;
+      address_2?: string;
+      city: string;
+      country: string;
+      country_code: string;
+      state: string;
+      state_code: string;
+      postcode: string;
+    };
+  }) => {
+    const response = await fetch(`${API_BASE}/users/create`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Token': getToken() || ''
+      },
+      body: JSON.stringify(data)
+    });
+    return handleResponse(response);
+  }
+
+    
   },
 
   brands: {
@@ -577,7 +614,25 @@ export const api = {
         last_page: responseData.pagination?.last_page || 1,
       };
     },
+    exportData: async (params: { date_from?: string; date_to?: string; user_ids?: string[] }) => {
+      const query = new URLSearchParams();
+      if (params.date_from) query.append('date_from', params.date_from);
+      if (params.date_to) query.append('date_to', params.date_to);
+      if (params.user_ids) {
+        params.user_ids.forEach(id => query.append('user_ids[]', id));
+      }
+
+      const response = await fetch(`${API_BASE}/orders/export-data?${query}`, {
+        headers: {
+          'Token': getToken() || '',
+          'Accept': 'application/json'
+        }
+      });
+      return handleResponse(response);
+    },
   },
+
+  
 
 
 };

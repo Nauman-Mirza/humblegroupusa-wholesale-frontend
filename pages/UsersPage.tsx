@@ -56,6 +56,22 @@ const UsersPage: React.FC = () => {
     }
   };
 
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [newUser, setNewUser] = useState({
+    first_name: '', last_name: '', email: '',
+    password: '', password_confirmation: '',
+    phone: '', company_name: '', website: '',
+    can_order: false, is_active: false,
+    role_id: '',
+    shipping_address: {
+      address_1: '', address_2: '', city: '',
+      country: '', country_code: '',
+      state: '', state_code: '', postcode: ''
+    }
+  });
+  const [createStates, setCreateStates] = useState<State[]>([]);
+  const [loadingCreateStates, setLoadingCreateStates] = useState(false);
+
   const fetchRoles = async () => {
     try {
       const res = await api.roles.getAll({ per_page: 100, page: 1 });
@@ -109,6 +125,69 @@ const UsersPage: React.FC = () => {
     fetchRoles();
     fetchCountries();
   }, [page]);
+
+  const handleCreateUser = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setIsSubmitting(true);
+  try {
+    const payload: any = { ...newUser };
+    if (!payload.role_id) delete payload.role_id;
+    if (!payload.website) delete payload.website;
+    await api.users.create(payload);
+    setIsCreateOpen(false);
+    setNewUser({
+      first_name: '', last_name: '', email: '',
+      password: '', password_confirmation: '',
+      phone: '', company_name: '', website: '',
+      can_order: false, is_active: false, role_id: '',
+      shipping_address: {
+        address_1: '', address_2: '', city: '',
+        country: '', country_code: '',
+        state: '', state_code: '', postcode: ''
+      }
+    });
+    fetchData();
+  } catch (err: any) {
+    alert(err.message || 'Failed to create customer');
+  } finally {
+    setIsSubmitting(false);
+  }
+};
+
+const handleCreateCountryChange = async (countryCode: string) => {
+  const selectedCountry = countries.find(c => c.code === countryCode);
+  setNewUser(prev => ({
+    ...prev,
+    shipping_address: {
+      ...prev.shipping_address,
+      country_code: countryCode,
+      country: selectedCountry?.name || '',
+      state: '', state_code: ''
+    }
+  }));
+  if (countryCode) {
+    setLoadingCreateStates(true);
+    try {
+      const res = await api.location.getStatesByCountry(countryCode);
+      setCreateStates(res.data?.states || []);
+    } catch { setCreateStates([]); }
+    finally { setLoadingCreateStates(false); }
+  } else {
+    setCreateStates([]);
+  }
+};
+
+const handleCreateStateChange = (stateName: string) => {
+    const selectedState = createStates.find(s => s.name === stateName);
+    setNewUser(prev => ({
+      ...prev,
+      shipping_address: {
+        ...prev.shipping_address,
+        state: stateName,
+        state_code: selectedState?.code || ''
+      }
+    }));
+  };
 
   const openEditDialog = async (user: User) => {
     setLoadingDetail(true);
@@ -253,6 +332,9 @@ const UsersPage: React.FC = () => {
           <h1 className="text-2xl font-bold">Wholesale Customers</h1>
           <p className="text-sm text-gray-600 mt-1">Manage wholesale buyer accounts</p>
         </div>
+        <Button variant="primary" onClick={() => setIsCreateOpen(true)}>
+          + Create Customer
+        </Button>
       </div>
 
       <Card noPadding>
@@ -605,7 +687,151 @@ const UsersPage: React.FC = () => {
           </p>
         )}
       </Dialog>
+      <Dialog
+  isOpen={isCreateOpen}
+  onClose={() => setIsCreateOpen(false)}
+  title="Create Customer"
+  footer={(
+    <>
+      <Button variant="outline" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
+      <Button variant="primary" loading={isSubmitting} onClick={handleCreateUser}>Create Customer</Button>
+    </>
+  )}
+>
+  <div className="space-y-5">
+    <div className="grid grid-cols-2 gap-4">
+      <Input label="First Name" value={newUser.first_name}
+        onChange={(e) => setNewUser({ ...newUser, first_name: e.target.value })} />
+      <Input label="Last Name" value={newUser.last_name}
+        onChange={(e) => setNewUser({ ...newUser, last_name: e.target.value })} />
     </div>
+
+    <Input label="Email" type="email" value={newUser.email}
+      onChange={(e) => setNewUser({ ...newUser, email: e.target.value })} />
+
+    <div className="grid grid-cols-2 gap-4">
+      <Input label="Password" type="password" value={newUser.password}
+        onChange={(e) => setNewUser({ ...newUser, password: e.target.value })} />
+      <Input label="Confirm Password" type="password" value={newUser.password_confirmation}
+        onChange={(e) => setNewUser({ ...newUser, password_confirmation: e.target.value })} />
+    </div>
+
+    <div className="grid grid-cols-2 gap-4">
+      <Input label="Phone" value={newUser.phone}
+        onChange={(e) => setNewUser({ ...newUser, phone: e.target.value })} />
+      <Input label="Website (Optional)" value={newUser.website}
+        onChange={(e) => setNewUser({ ...newUser, website: e.target.value })} />
+    </div>
+
+    <Input label="Company Name" value={newUser.company_name}
+      onChange={(e) => setNewUser({ ...newUser, company_name: e.target.value })} />
+
+    {/* Role */}
+    <div className="space-y-1">
+      <label className="block text-sm font-medium text-gray-700">User Role (Optional)</label>
+      <select
+        value={newUser.role_id}
+        onChange={(e) => setNewUser({ ...newUser, role_id: e.target.value })}
+        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
+      >
+        <option value="">Select a role</option>
+        {roles.map(r => (
+          <option key={r._id || r.id} value={r._id || r.id || ''}>
+            {r.name.charAt(0).toUpperCase() + r.name.slice(1)}
+          </option>
+        ))}
+      </select>
+    </div>
+
+    {/* Shipping Address */}
+    <div className="bg-gray-50 p-5 border border-gray-200 rounded space-y-4">
+      <h3 className="text-sm font-semibold text-gray-900">Shipping Address</h3>
+
+      <Input label="Address Line 1" value={newUser.shipping_address.address_1}
+        onChange={(e) => setNewUser({ ...newUser, shipping_address: { ...newUser.shipping_address, address_1: e.target.value } })} />
+      <Input label="Address Line 2 (Optional)" value={newUser.shipping_address.address_2}
+        onChange={(e) => setNewUser({ ...newUser, shipping_address: { ...newUser.shipping_address, address_2: e.target.value } })} />
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-1">
+          <label className="block text-sm font-medium text-gray-700">Country</label>
+          <select
+            value={newUser.shipping_address.country_code}
+            onChange={(e) => handleCreateCountryChange(e.target.value)}
+            disabled={loadingCountries}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent disabled:bg-gray-100"
+          >
+            <option value="">{loadingCountries ? 'Loading...' : 'Select a country'}</option>
+            {countries.map(c => (
+              <option key={c.code} value={c.code}>{c.name}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="space-y-1">
+          <label className="block text-sm font-medium text-gray-700">State / Province</label>
+          <select
+            value={newUser.shipping_address.state}
+            onChange={(e) => handleCreateStateChange(e.target.value)}
+            disabled={!newUser.shipping_address.country_code || loadingCreateStates}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent disabled:bg-gray-100"
+          >
+            <option value="">
+              {!newUser.shipping_address.country_code ? 'Select country first'
+                : loadingCreateStates ? 'Loading...'
+                : createStates.length === 0 ? 'No states available'
+                : 'Select a state'}
+            </option>
+            {createStates.map((s, i) => (
+              <option key={i} value={s.name}>{s.name}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <Input label="City" value={newUser.shipping_address.city}
+          onChange={(e) => setNewUser({ ...newUser, shipping_address: { ...newUser.shipping_address, city: e.target.value } })} />
+        <Input label="Postcode / ZIP" value={newUser.shipping_address.postcode}
+          onChange={(e) => setNewUser({ ...newUser, shipping_address: { ...newUser.shipping_address, postcode: e.target.value } })} />
+      </div>
+    </div>
+
+    {/* Toggles */}
+    <div className="flex items-center justify-between p-5 border-2 border-gray-200 bg-gradient-to-r from-gray-50 to-white rounded-lg">
+      <div className="flex-1">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-sm font-bold text-gray-900">Account Status</span>
+          <Badge variant={newUser.is_active ? 'success' : 'neutral'}>
+            {newUser.is_active ? 'Active' : 'Inactive'}
+          </Badge>
+        </div>
+        <p className="text-xs text-gray-500">
+          {newUser.is_active ? 'Customer can log in and access the platform' : 'Account will be disabled on creation'}
+        </p>
+      </div>
+      <Switch checked={newUser.is_active} onChange={(val) => setNewUser({ ...newUser, is_active: val })} label="Toggle account status" />
+    </div>
+
+    <div className="flex items-center justify-between p-5 border-2 border-blue-200 bg-gradient-to-r from-blue-50 to-white rounded-lg">
+      <div className="flex-1">
+        <div className="flex items-center gap-2 mb-1">
+          <ShoppingCart size={16} className="text-blue-600" />
+          <span className="text-sm font-bold text-gray-900">Order Permissions</span>
+          <Badge variant={newUser.can_order ? 'success' : 'warning'}>
+            {newUser.can_order ? 'Enabled' : 'Disabled'}
+          </Badge>
+        </div>
+        <p className="text-xs text-gray-500">
+          {newUser.can_order ? 'Customer can place orders' : 'Catalog access only'}
+        </p>
+      </div>
+      <Switch checked={newUser.can_order} onChange={(val) => setNewUser({ ...newUser, can_order: val })} label="Toggle order permissions" />
+    </div>
+  </div>
+</Dialog>
+    </div>
+
   );
 };
 
