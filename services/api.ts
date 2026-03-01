@@ -234,69 +234,79 @@ export const api = {
   },
 
   brands: {
-    getAll: async (params: { per_page: number; page: number; search?: string }) => {
-      const query = new URLSearchParams();
-      query.append('per_page', params.per_page.toString());
-      query.append('page', params.page.toString());
-      if (params.search) query.append('search', params.search);
+  getAll: async (params: { per_page: number; page: number; search?: string }) => {
+    const query = new URLSearchParams();
+    query.append('per_page', params.per_page.toString());
+    query.append('page', params.page.toString());
+    if (params.search) query.append('search', params.search);
 
-      const response = await fetch(`${API_BASE}/brands?${query}`, {
-        headers: { 
-          'Token': getToken() || '',
-          'Accept': 'application/json'
-        }
-      });
-      
-      const result = await handleResponse(response);
-      const responseData = result.data[0];
-      
-      return {
-        data: responseData.items || [],
-        total: responseData.pagination?.total || 0,
-        per_page: responseData.pagination?.per_page || 10,
-        current_page: responseData.pagination?.current_page || 1
-      };
-    },
-
-    create: async (name: string, description: string) => {
-      const response = await fetch(`${API_BASE}/brand/create`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Token': getToken() || ''
-        },
-        body: JSON.stringify({ name, description })
-      });
-      return handleResponse(response);
-    },
-
-    update: async (brandId: string, name: string, description: string) => {
-      const response = await fetch(`${API_BASE}/brand/update`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Token': getToken() || ''
-        },
-        body: JSON.stringify({ brand_id: brandId, name, description })
-      });
-      return handleResponse(response);
-    },
-
-    delete: async (brandId: string) => {
-      const response = await fetch(`${API_BASE}/brand/delete`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Token': getToken() || ''
-        },
-        body: JSON.stringify({ brand_id: brandId })
-      });
-      return handleResponse(response);
-    }
+    const response = await fetch(`${API_BASE}/brands?${query}`, {
+      headers: { 
+        'Token': getToken() || '',
+        'Accept': 'application/json'
+      }
+    });
+    
+    const result = await handleResponse(response);
+    const responseData = result.data[0];
+    
+    return {
+      data: responseData.items || [],
+      total: responseData.pagination?.total || 0,
+      per_page: responseData.pagination?.per_page || 10,
+      current_page: responseData.pagination?.current_page || 1
+    };
   },
+
+  create: async (data: { name: string; description?: string; image?: File | null }) => {
+    const formData = new FormData();
+    formData.append('name', data.name);
+    if (data.description) formData.append('description', data.description);
+    if (data.image) formData.append('image', data.image);
+
+    const response = await fetch(`${API_BASE}/brand/create`, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Token': getToken() || ''
+      },
+      body: formData
+    });
+    return handleResponse(response);
+  },
+
+  update: async (data: { brand_id: string; name?: string; description?: string; image?: File | null; remove_image?: boolean }) => {
+    const formData = new FormData();
+    formData.append('brand_id', data.brand_id);
+    if (data.name) formData.append('name', data.name);
+    if (data.description !== undefined) formData.append('description', data.description);
+    if (data.image) formData.append('image', data.image);
+    if (data.remove_image) formData.append('remove_image', '1');
+
+    const response = await fetch(`${API_BASE}/brand/update`, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Token': getToken() || ''
+      },
+      body: formData
+    });
+    return handleResponse(response);
+  },
+
+  delete: async (brandId: string) => {
+    const response = await fetch(`${API_BASE}/brand/delete`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Token': getToken() || ''
+      },
+      body: JSON.stringify({ brand_id: brandId })
+    });
+    return handleResponse(response);
+  }
+},
 
   categories: {
     getAll: async (params: { per_page: number; page: number; brand_id?: string; search?: string }) => {
