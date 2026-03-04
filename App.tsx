@@ -9,6 +9,7 @@ import ProductsPage from './pages/ProductsPage';
 import AdminsPage from './pages/AdminsPage';
 import RolesPage from './pages/RolesPage';
 import OrdersPage from './pages/OrdersPage';
+import RegistrationRequestsPage from './pages/RegistrationRequestsPage';
 import Layout from './components/Layout';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -30,6 +31,7 @@ const App: React.FC = () => {
       <Route path="/admins" element={<ProtectedRoute><AdminsPage /></ProtectedRoute>} />
       <Route path="/roles" element={<ProtectedRoute><RolesPage /></ProtectedRoute>} />
       <Route path="/orders" element={<ProtectedRoute><OrdersPage /></ProtectedRoute>} />
+      <Route path="/registration-requests" element={<ProtectedRoute><RegistrationRequestsPage /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );

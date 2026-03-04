@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Users, Tag, Layers, Grid, Shield, LogOut, ChevronLeft, ChevronRight, UserCog, Package } from 'lucide-react';
+import { Users, Tag, Layers, Grid, Shield, LogOut, ChevronLeft, ChevronRight, UserCog, Package, UserPlus } from 'lucide-react';
 import { api } from '../services/api';
 
 interface LayoutProps {
@@ -31,6 +31,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   const navItems = [
     { label: 'Wholesale Customers', path: '/users', icon: Users },
+    { label: 'User Requests', path: '/registration-requests', icon: UserPlus },
     { label: 'Roles', path: '/roles', icon: UserCog },
     { label: 'Brands', path: '/brands', icon: Tag },
     { label: 'Categories', path: '/categories', icon: Layers },

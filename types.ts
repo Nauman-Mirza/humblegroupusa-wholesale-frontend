@@ -35,6 +35,28 @@ export interface ShippingAddress {
   postcode?: string;
 }
 
+export interface RegistrationRequest {
+  _id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string;
+  website?: string;
+  company_name: string;
+  registration_request: 'pending' | 'declined' | 'accepted';
+  is_active: boolean;
+  can_order: boolean;
+  roles: string[];
+  agree_min_order: boolean;
+  agree_no_personal_use: boolean;
+  agree_terms: boolean;
+  agree_no_resell: boolean;
+  signed_at: string;
+  signature: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Brand {
   _id?: string;
   id?: string;

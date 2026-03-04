@@ -593,6 +593,71 @@ export const api = {
     }
   },
 
+  registrationRequests: {
+    getPending: async (params: { per_page: number; page: number; search?: string }) => {
+      const query = new URLSearchParams();
+      query.append('per_page', params.per_page.toString());
+      query.append('page', params.page.toString());
+      if (params.search) query.append('search', params.search);
+
+      const response = await fetch(`${API_BASE}/users/requests?${query}`, {
+        headers: {
+          'Token': getToken() || '',
+          'Accept': 'application/json'
+        }
+      });
+
+      const result = await handleResponse(response);
+      const responseData = result.data?.users || {};
+
+      return {
+        data: responseData.items || [],
+        total: responseData.pagination?.total || 0,
+        total_pending: result.data?.total_pending_requests || 0,
+        per_page: responseData.pagination?.per_page || 10,
+        current_page: responseData.pagination?.current_page || 1,
+      };
+    },
+
+    getDeclined: async (params: { per_page: number; page: number; search?: string }) => {
+      const query = new URLSearchParams();
+      query.append('per_page', params.per_page.toString());
+      query.append('page', params.page.toString());
+      if (params.search) query.append('search', params.search);
+
+      const response = await fetch(`${API_BASE}/users/requests/declined?${query}`, {
+        headers: {
+          'Token': getToken() || '',
+          'Accept': 'application/json'
+        }
+      });
+
+      const result = await handleResponse(response);
+      const responseData = result.data?.users || {};
+
+      return {
+        data: responseData.items || [],
+        total: responseData.pagination?.total || 0,
+        total_declined: result.data?.total_declined_requests || 0,
+        per_page: responseData.pagination?.per_page || 10,
+        current_page: responseData.pagination?.current_page || 1,
+      };
+    },
+
+    updateStatus: async (userId: string, action: 'accepted' | 'declined') => {
+      const response = await fetch(`${API_BASE}/users/requests/update`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Token': getToken() || ''
+        },
+        body: JSON.stringify({ user_id: userId, action })
+      });
+      return handleResponse(response);
+    },
+  },
+
   orders: {
     getAll: async (params: { per_page: number; page: number; search?: string; status?: string; user_id?: string; min_total?: number; max_total?: number }) => {
       const query = new URLSearchParams();
