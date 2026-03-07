@@ -10,6 +10,7 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [currentAdmin, setCurrentAdmin] = useState<any>(null);
+  const [pendingCount, setPendingCount] = useState(0);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -22,6 +23,20 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       }
     };
     fetchCurrentAdmin();
+  }, []);
+
+  useEffect(() => {
+    const fetchPendingCount = async () => {
+      try {
+        const res = await api.registrationRequests.getPending({ per_page: 1, page: 1 });
+        setPendingCount(res.total_pending);
+      } catch {
+        // silently fail
+      }
+    };
+    fetchPendingCount();
+    const interval = setInterval(fetchPendingCount, 60000);
+    return () => clearInterval(interval);
   }, []);
 
   const handleLogout = () => {
@@ -66,19 +81,39 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         </div>
 
         <nav className="flex-1 py-8 space-y-1 overflow-y-auto px-3">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              className={({ isActive }) => `
-                flex items-center gap-3 px-4 py-3 text-[11px] font-bold tracking-widest uppercase transition-all rounded-sm
-                ${isActive ? 'bg-white text-black' : 'text-steel hover:text-white hover:bg-white/5'}
-              `}
-            >
-              <item.icon size={16} />
-              {isSidebarOpen && <span>{item.label}</span>}
-            </NavLink>
-          ))}
+          {navItems.map((item) => {
+            const isPendingRequests = item.path === '/registration-requests';
+            const showBadge = isPendingRequests && pendingCount > 0;
+            return (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                className={({ isActive }) => `
+                  flex items-center gap-3 px-4 py-3 text-[11px] font-bold tracking-widest uppercase transition-all rounded-sm
+                  ${isActive ? 'bg-white text-black' : 'text-steel hover:text-white hover:bg-white/5'}
+                `}
+              >
+                <div className="relative shrink-0">
+                  <item.icon size={16} />
+                  {showBadge && !isSidebarOpen && (
+                    <span className="absolute -top-1.5 -right-1.5 min-w-[14px] h-[14px] bg-error text-white text-[9px] font-black rounded-full flex items-center justify-center px-0.5">
+                      {pendingCount > 99 ? '99+' : pendingCount}
+                    </span>
+                  )}
+                </div>
+                {isSidebarOpen && (
+                  <>
+                    <span className="flex-1">{item.label}</span>
+                    {showBadge && (
+                      <span className="ml-auto min-w-[18px] h-[18px] bg-error text-white text-[10px] font-black rounded-full flex items-center justify-center px-1">
+                        {pendingCount > 99 ? '99+' : pendingCount}
+                      </span>
+                    )}
+                  </>
+                )}
+              </NavLink>
+            );
+          })}
         </nav>
 
         <div className="p-4 border-t border-white/5 bg-black/20">
