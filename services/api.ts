@@ -658,6 +658,47 @@ export const api = {
     },
   },
 
+  emailTemplates: {
+    getAll: async () => {
+      const response = await fetch(`${API_BASE}/email-templates`, {
+        headers: {
+          'Token': getToken() || '',
+          'Accept': 'application/json'
+        }
+      });
+      return handleResponse(response);
+    },
+
+    update: async (data: {
+      key: string;
+      subject: string;
+      body_html: string;
+      body_text: string;
+      is_active: boolean;
+      header_logo?: File | null;
+      remove_header_logo?: boolean;
+    }) => {
+      const formData = new FormData();
+      formData.append('key', data.key);
+      formData.append('subject', data.subject);
+      formData.append('body_html', data.body_html);
+      formData.append('body_text', data.body_text);
+      formData.append('is_active', data.is_active ? '1' : '0');
+      if (data.header_logo) formData.append('header_logo', data.header_logo);
+      if (data.remove_header_logo) formData.append('Remove_header_logo', '1');
+
+      const response = await fetch(`${API_BASE}/email-templates/update`, {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Token': getToken() || ''
+        },
+        body: formData
+      });
+      return handleResponse(response);
+    }
+  },
+
   orders: {
     getAll: async (params: { per_page: number; page: number; search?: string; status?: string; user_id?: string; min_total?: number; max_total?: number }) => {
       const query = new URLSearchParams();

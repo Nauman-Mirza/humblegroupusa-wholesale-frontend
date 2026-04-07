@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Users, Tag, Layers, Grid, Shield, LogOut, ChevronLeft, ChevronRight, UserCog, Package, UserPlus } from 'lucide-react';
+import { Users, Tag, Layers, Grid, Shield, LogOut, ChevronLeft, ChevronRight, UserCog, Package, UserPlus, Mail } from 'lucide-react';
 import { api } from '../services/api';
 
 interface LayoutProps {
@@ -53,6 +53,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { label: 'Packaging Type', path: '/sub-categories', icon: Grid },
     { label: 'Products', path: '/products', icon: Tag },
     { label: 'Orders', path: '/orders', icon: Package },
+    { label: 'Email Templates', path: '/email-templates', icon: Mail },
   ];
 
   // Only show Admin Management to super_admin
