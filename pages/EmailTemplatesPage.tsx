@@ -3,7 +3,7 @@ import { Mail, Edit, ImageOff, Upload } from 'lucide-react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { api } from '../services/api';
-import { Button, Card, Badge, Input, Switch } from '../components/UIComponents';
+import { Button, Card, Input } from '../components/UIComponents';
 
 interface EmailTemplate {
   _id: string;
@@ -57,7 +57,7 @@ const RichEditor: React.FC<{
   const prevContent = useRef(content);
   useEffect(() => {
     if (editor && content !== prevContent.current) {
-      editor.commands.setContent(content, false);
+      editor.commands.setContent(content);
       prevContent.current = content;
     }
   }, [content, editor]);
@@ -136,7 +136,6 @@ const EmailTemplatesPage: React.FC = () => {
   const [editingTemplate, setEditingTemplate] = useState<EmailTemplate | null>(null);
   const [subject, setSubject] = useState('');
   const [bodyHtml, setBodyHtml] = useState('');
-  const [isActive, setIsActive] = useState(true);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [removeLogo, setRemoveLogo] = useState(false);
@@ -160,7 +159,6 @@ const EmailTemplatesPage: React.FC = () => {
     setEditingTemplate(template);
     setSubject(template.subject);
     setBodyHtml(template.body_html);
-    setIsActive(template.is_active);
     setLogoFile(null);
     setLogoPreview(template.header_logo || null);
     setRemoveLogo(false);
@@ -202,7 +200,7 @@ const EmailTemplatesPage: React.FC = () => {
         subject,
         body_html: bodyHtml,
         body_text: '',
-        is_active: isActive,
+        is_active: true,
         header_logo: logoFile,
         remove_header_logo: removeLogo,
       });
@@ -244,7 +242,7 @@ const EmailTemplatesPage: React.FC = () => {
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-border bg-platinum/50">
-              {['Template Name', 'Key', 'Subject', 'Status', 'Actions'].map((h) => (
+              {['Template Name', 'Key', 'Subject', 'Actions'].map((h) => (
                 <th key={h} className="px-4 py-3 font-bold text-steel uppercase text-[10px] tracking-widest">
                   {h}
                 </th>
@@ -266,11 +264,6 @@ const EmailTemplatesPage: React.FC = () => {
                   <span className="text-sm text-gray-600 truncate max-w-[240px] block">
                     {template.subject}
                   </span>
-                </td>
-                <td className="px-4 py-3">
-                  <Badge variant={template.is_active ? 'success' : 'error'}>
-                    {template.is_active ? 'Active' : 'Inactive'}
-                  </Badge>
                 </td>
                 <td className="px-4 py-3">
                   <Button size="sm" variant="outline" onClick={() => openEdit(template)}>
@@ -297,15 +290,9 @@ const EmailTemplatesPage: React.FC = () => {
                   {editingTemplate.name}
                 </p>
               </div>
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-bold uppercase tracking-widest text-steel">Active</span>
-                  <Switch checked={isActive} onChange={setIsActive} />
-                </div>
-                <button onClick={closeEdit} className="text-steel hover:text-primary text-xl leading-none">
-                  &times;
-                </button>
-              </div>
+              <button onClick={closeEdit} className="text-steel hover:text-primary text-xl leading-none">
+                &times;
+              </button>
             </div>
 
             {/* Body */}
